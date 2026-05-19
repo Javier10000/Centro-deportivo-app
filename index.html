@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Club Deportivo — Elite Sports Center</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <!-- ========== OVERLAY DE CARGA ========== -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loader-ring"></div>
+  </div>
+
+  <!-- ========== NAVBAR ========== -->
+  <nav id="navbar" class="navbar hidden">
+    <div class="nav-brand">
+      <span class="brand-icon">⬡</span>
+      <span class="brand-name">ELITE<span class="brand-accent">SPORT</span></span>
+    </div>
+    <div class="nav-links">
+      <a href="#" class="nav-link active" data-page="dashboard">Inicio</a>
+      <a href="#" class="nav-link" data-page="deportes">Deportes</a>
+      <a href="#" class="nav-link" data-page="reservas">Reservas</a>
+      <a href="#" class="nav-link" data-page="suscripciones">Suscripciones</a>
+      <a href="#" class="nav-link nav-link--admin hidden" id="nav-admin-link" data-page="admin">⚙ Admin</a>
+    </div>
+    <div class="nav-user">
+      <span id="nav-username" class="nav-username"></span>
+      <button id="btn-perfil" class="btn-avatar" title="Mi perfil">
+        <span id="avatar-initials"></span>
+      </button>
+      <button id="btn-logout" class="btn-logout" title="Cerrar sesión">✕</button>
+    </div>
+  </nav>
+
+  <!-- ========== MAIN WRAPPER ========== -->
+  <main id="app-root">
+
+    <!-- ===== PÁGINA: AUTH ===== -->
+    <section id="page-auth" class="page page-auth hidden">
+      <div class="auth-bg">
+        <div class="auth-bg-text">ELITE<br />SPORT</div>
+      </div>
+      <div class="auth-panel">
+        <div class="auth-logo">
+          <span class="brand-icon">⬡</span>
+          <span>ELITE<span class="brand-accent">SPORT</span></span>
+        </div>
+
+        <!-- LOGIN -->
+        <div id="form-login" class="auth-form active">
+          <h2 class="auth-title">Bienvenido de vuelta</h2>
+          <p class="auth-subtitle">Accede a tu cuenta para continuar</p>
+          <div class="field">
+            <label>Correo electrónico</label>
+            <input type="email" id="login-email" placeholder="tu@correo.com" autocomplete="email" />
+          </div>
+          <div class="field">
+            <label>Contraseña</label>
+            <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+          <div id="login-error" class="msg-error hidden"></div>
+          <button id="btn-login" class="btn-primary full">Iniciar sesión</button>
+          <div class="auth-links">
+            <a href="#" id="link-forgot">¿Olvidaste tu contraseña?</a>
+            <span>·</span>
+            <a href="#" id="link-to-register">Crear cuenta</a>
+          </div>
+        </div>
+
+        <!-- REGISTRO -->
+        <div id="form-register" class="auth-form">
+          <h2 class="auth-title">Crear cuenta</h2>
+          <p class="auth-subtitle">Únete al club deportivo</p>
+          <div class="field">
+            <label>Nombre completo</label>
+            <input type="text" id="reg-nombre" placeholder="Ana García López" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>DNI</label>
+              <input type="text" id="reg-dni" placeholder="12345678A" />
+            </div>
+            <div class="field">
+              <label>Fecha de nacimiento</label>
+              <input type="date" id="reg-fnac" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Correo electrónico</label>
+            <input type="email" id="reg-email" placeholder="tu@correo.com" />
+          </div>
+          <div class="field">
+            <label>Contraseña</label>
+            <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div id="reg-error" class="msg-error hidden"></div>
+          <div id="reg-success" class="msg-success hidden"></div>
+          <button id="btn-register" class="btn-primary full">Crear cuenta</button>
+          <div class="auth-links">
+            <a href="#" id="link-to-login">Ya tengo cuenta</a>
+          </div>
+        </div>
+
+        <!-- NUEVA CONTRASEÑA -->
+        <div id="form-reset" class="auth-form">
+          <h2 class="auth-title">Nueva contraseña</h2>
+          <p class="auth-subtitle">Elige una contraseña segura para tu cuenta</p>
+          <div class="field">
+            <label>Nueva contraseña</label>
+            <input type="password" id="reset-pass1" placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div class="field">
+            <label>Confirmar contraseña</label>
+            <input type="password" id="reset-pass2" placeholder="Repite la contraseña" />
+          </div>
+          <div id="reset-msg" class="msg-success hidden"></div>
+          <button id="btn-reset-pass" class="btn-primary full">Establecer nueva contraseña</button>
+        </div>
+
+        <!-- RECUPERAR CONTRASEÑA -->
+        <div id="form-forgot" class="auth-form">
+          <h2 class="auth-title">Recuperar contraseña</h2>
+          <p class="auth-subtitle">Te enviaremos las instrucciones a tu correo</p>
+          <div class="field">
+            <label>Correo electrónico</label>
+            <input type="email" id="forgot-email" placeholder="tu@correo.com" />
+          </div>
+          <div id="forgot-msg" class="msg-success hidden"></div>
+          <button id="btn-forgot" class="btn-primary full">Enviar instrucciones</button>
+          <div class="auth-links">
+            <a href="#" id="link-back-login">← Volver al inicio de sesión</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PÁGINA: DASHBOARD ===== -->
+    <section id="page-dashboard" class="page hidden">
+      <div class="page-hero">
+        <div class="hero-content">
+          <p class="hero-eyebrow">Bienvenido de nuevo</p>
+          <h1 class="hero-title" id="hero-user-name">Atleta</h1>
+          <p class="hero-sub">Gestiona tus clases, suscripciones y reservas desde aquí</p>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-card">
+            <span class="stat-num" id="stat-subs">0</span>
+            <span class="stat-lbl">Suscripciones activas</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="stat-reservas">0</span>
+            <span class="stat-lbl">Reservas totales</span>
+          </div>
+        </div>
+      </div>
+      <div class="page-content">
+        <h3 class="section-title">Mis próximas clases</h3>
+        <div id="dashboard-reservas" class="reservas-list"></div>
+
+        <h3 class="section-title" style="margin-top:3rem">Deportes disponibles</h3>
+        <div class="deporte-grid" id="dash-deportes"></div>
+      </div>
+    </section>
+
+    <!-- ===== PÁGINA: DEPORTES ===== -->
+    <section id="page-deportes" class="page hidden">
+      <div class="page-header">
+        <h2 class="page-title">Nuestros Deportes</h2>
+        <p class="page-desc">Descubre todos los deportes y profesores disponibles</p>
+      </div>
+      <div class="page-content">
+        <div class="deporte-full-grid" id="deportes-grid"></div>
+      </div>
+    </section>
+
+    <!-- ===== PÁGINA: RESERVAS ===== -->
+    <section id="page-reservas" class="page hidden">
+      <div class="page-header">
+        <h2 class="page-title">Mis Reservas</h2>
+        <p class="page-desc">Reserva clases de los deportes a los que estás suscrito</p>
+      </div>
+      <div class="page-content">
+        <div class="reservas-toolbar">
+          <div class="field" style="flex:1">
+            <label>Deporte</label>
+            <select id="reserva-deporte">
+              <option value="">— Selecciona deporte —</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1">
+            <label>Clase / Horario</label>
+            <select id="reserva-clase">
+              <option value="">— Primero selecciona deporte —</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1">
+            <label>Fecha</label>
+            <input type="date" id="reserva-fecha" />
+          </div>
+          <button id="btn-hacer-reserva" class="btn-primary" style="align-self:flex-end">Reservar clase</button>
+        </div>
+        <div id="reserva-msg" class="msg-error hidden"></div>
+        <div id="reserva-ok" class="msg-success hidden"></div>
+
+        <h3 class="section-title" style="margin-top:2.5rem">Historial de reservas</h3>
+        <div id="reservas-historial"></div>
+      </div>
+    </section>
+
+    <!-- ===== PÁGINA: SUSCRIPCIONES ===== -->
+    <section id="page-suscripciones" class="page hidden">
+      <div class="page-header">
+        <h2 class="page-title">Suscripciones</h2>
+        <p class="page-desc">Gestiona tus suscripciones activas por deporte</p>
+      </div>
+      <div class="page-content">
+        <h3 class="section-title">Mis suscripciones activas</h3>
+        <div id="mis-suscripciones"></div>
+
+        <h3 class="section-title" style="margin-top:3rem">Contratar nueva suscripción</h3>
+        <div class="subs-planes-grid" id="planes-grid"></div>
+      </div>
+    </section>
+
+    <!-- ===== PÁGINA: ADMIN ===== -->
+    <section id="page-admin" class="page hidden">
+      <div class="page-header">
+        <div class="admin-header-content">
+          <div>
+            <p class="hero-eyebrow">Panel de administración</p>
+            <h2 class="page-title">⚙ Gestión del club</h2>
+            <p class="page-desc">Administra deportes, categorías, profesores y clases</p>
+          </div>
+        </div>
+      </div>
+      <div class="page-content">
+        <!-- Tabs de navegación admin -->
+        <div id="admin-tabs" class="admin-tabs"></div>
+        <!-- Contenido dinámico de cada tab -->
+        <div id="admin-content" class="admin-content"></div>
+      </div>
+    </section>
+
+    <!-- ===== MODAL: PERFIL ===== -->
+    <div id="modal-perfil" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Mi perfil</h3>
+          <button class="modal-close" id="close-modal-perfil">✕</button>
+        </div>
+        <div class="modal-body" id="perfil-body"></div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: CANCELAR SUSCRIPCIÓN ===== -->
+    <div id="modal-cancelar" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Cancelar suscripción</h3>
+          <button class="modal-close" id="close-modal-cancelar">✕</button>
+        </div>
+        <div class="modal-body">
+          <p>¿Estás seguro de que deseas cancelar esta suscripción? Perderás el acceso a las clases de ese deporte.</p>
+          <div class="modal-actions">
+            <button id="btn-confirm-cancelar" class="btn-danger">Sí, cancelar</button>
+            <button id="btn-cancel-modal" class="btn-secondary">No, mantener</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: ELIMINAR CUENTA ===== -->
+    <div id="modal-eliminar-cuenta" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Eliminar cuenta</h3>
+          <button class="modal-close" id="close-modal-eliminar-cuenta">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom:0.75rem">⚠️ <strong>Esta acción es irreversible.</strong></p>
+          <p style="color:var(--clr-muted);font-size:14px;margin-bottom:1.5rem">
+            Se eliminarán permanentemente tu cuenta, todas tus reservas y todas tus suscripciones.
+          </p>
+          <div class="modal-actions">
+            <button id="btn-confirm-eliminar-cuenta" class="btn-danger">Sí, eliminar mi cuenta</button>
+            <button id="btn-cancel-eliminar-cuenta" class="btn-secondary">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: ADMIN ELIMINAR (compartido) ===== -->
+    <div id="modal-admin-eliminar" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Confirmar eliminación</h3>
+          <button class="modal-close" id="close-modal-admin-eliminar">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="admin-eliminar-msg" style="margin-bottom:1.5rem;line-height:1.7"></p>
+          <div class="modal-actions">
+            <button id="btn-admin-confirm-eliminar" class="btn-danger">Sí, eliminar</button>
+            <button id="btn-admin-cancel-eliminar" class="btn-secondary">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========== FIREBASE SDK ========== -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyA-gYY2iRqf59reoHFOvoM-vWhKfjtG4Mo",
+      authDomain: "clgproyectonuevo.firebaseapp.com",
+      projectId: "clgproyectonuevo",
+      storageBucket: "clgproyectonuevo.firebasestorage.app",
+      messagingSenderId: "293248101165",
+      appId: "1:293248101165:web:df92c045a0b373925881a4",
+      measurementId: "G-1BP00YC0C1"
+    });
+  </script>
+
+  <!-- ========== APP ========== -->
+  <script src="db.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+
+</body>
+
+</html>
