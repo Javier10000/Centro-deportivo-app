@@ -290,7 +290,42 @@ async function renderPaginaReservas() {
       return;
     }
 
-    for (const c of clases) {
+    // --- Calcular edad del usuario ---
+    const fnac = new Date(usuario.F_Nacimiento);
+    const hoyDate = new Date();
+    let edadUsuario = hoyDate.getFullYear() - fnac.getFullYear();
+    const mesD = hoyDate.getMonth() - fnac.getMonth();
+    if (mesD < 0 || (mesD === 0 && hoyDate.getDate() < fnac.getDate())) edadUsuario--;
+
+    // --- Buscar categorías: primero específicas del deporte, si no hay usar globales ---
+    const todasCats = await DB.Categoria.listarTodas();
+    let categoriasDeporte = todasCats.filter(c => c.Deporte === deporte);
+    if (categoriasDeporte.length === 0) {
+      categoriasDeporte = todasCats.filter(c => !c.Deporte || c.Deporte === '');
+    }
+
+    // --- Categoría que corresponde al usuario ---
+    const categoriaUsuario = categoriasDeporte.find(
+      cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax
+    );
+
+    // --- Filtrar clases por categoría del usuario ---
+    const clasesFiltradas = categoriasDeporte.length === 0
+      ? clases  // sin categorías definidas → mostrar todas
+      : clases.filter(c => {
+          if (!c.Categoria) return false;
+          if (!categoriaUsuario) return false;
+          return c.Categoria === categoriaUsuario.id;
+        });
+
+    if (clasesFiltradas.length === 0) {
+      selectClase.innerHTML = categoriaUsuario
+        ? `<option value="">Sin clases para tu categoría (${categoriaUsuario.Nombre}, ${edadUsuario} años)</option>`
+        : `<option value="">No hay categoría para tu edad (${edadUsuario} años)</option>`;
+      return;
+    }
+
+    for (const c of clasesFiltradas) {
       const prof = c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null;
       const opt = document.createElement('option');
       opt.value = c.id;
