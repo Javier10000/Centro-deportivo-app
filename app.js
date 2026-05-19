@@ -7,70 +7,37 @@
    UTILIDADES
    ============================================================ */
 
-/**
- * Funcion que permite formatear una fecha en ISO(YYYY-MM-DDTH:min:seg) a DD/MM/YYY
- * @param {string} iso Fecha en formato iso
- * @returns {string} fecha en formato DD/MM/YYY
- */
 function formatFecha(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  // Devuelve el formateo de la fecha
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-/**
- * Funcion que permite formatear una fecha en ISO(YYYY-MM-DD) sin tiempo a DD/MM/YYY
- * @param {string} isoDate Fecha en formato iso
- * @returns {string} fecha en formato DD/MM/YYY
- */
 function formatFechaSola(isoDate) {
   if (!isoDate) return '—';
   const [y, m, d] = isoDate.split('-');
-  // Devuelve el formateo
   return `${d}/${m}/${y}`;
 }
 
-/**
- * Funcion que coge las iniciales de la persona para el icono al iniciar sesión
- * @param {string} nombre Cadena de texto con nombre apellido1 apellido2
- * @returns {string} Cadena de texto para las iniciales de la persona
- */
 function iniciales(nombre) {
   if (!nombre) return '?';
-  // Separa y posteriormente junta las iniciales
   return nombre.trim().split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
 }
 
-/**
- * Modifica la clase pasada por parametro para eliminar o añadir hidden
- * @param {HTMLElement} el Elemento para modificar la clase
- * @param {boolean} mostrar Boolean para modificar la clase y eliminar hidden
- */
 function toggle(el, mostrar) {
-  // Obtiene el objeto en el dom y segun el mostrar permite activar el atributo a activo o deshabilitarlo
   if (mostrar) el.classList.remove('hidden');
   else el.classList.add('hidden');
 }
 
-/**
- * Crea un mensaje en la esquina inferior
- * @param {string} mensaje Texto a mostrar
- * @param {string} tipo Tipo de mensaje ('success' o 'error')
- */
 function mostrarToast(mensaje, tipo = 'success') {
-  // Recoge el toast en caso de que exista en el documento
   let toast = document.getElementById('app-toast');
-  // Si no recoge nada lo crea
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'app-toast';
     document.body.appendChild(toast);
   }
-  // Configuración del mensaje y sus estilos
   toast.textContent = mensaje;
   toast.className = `app-toast app-toast--${tipo} app-toast--visible`;
-  // Timer para eliminar el mensaje tras 3.2 segundos
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => {
     toast.classList.remove('app-toast--visible');
@@ -83,10 +50,6 @@ function mostrarToast(mensaje, tipo = 'success') {
 
 let DEPORTES_CONFIG = {};
 
-/**
- * Carga la configuración de todos los deportes desde Firestore y la almacena en DEPORTES_CONFIG.
- * @returns {Promise<array>} Lista de deportes
- */
 async function cargarDeportesConfig() {
   const deportes = await DB.Deporte.listarTodos();
   DEPORTES_CONFIG = {};
@@ -105,33 +68,22 @@ async function cargarDeportesConfig() {
    NAVEGACIÓN
    ============================================================ */
 
-/**
- * Constante con los nombres de las diferentes paginas de la web
- */
 const PAGINAS = ['dashboard', 'deportes', 'reservas', 'suscripciones', 'admin'];
 
-/**
- * Funcion que permite la navegación entre las diferentes paginas de la web
- * @param {string} pagina Cadena de texto con la pagina a cambiar
- */
 async function navegarA(pagina) {
-  // Recorre el array completo y le añade la clase hidden a todas las paginas
   PAGINAS.forEach(p => {
     const el = document.getElementById(`page-${p}`);
     if (el) el.classList.add('hidden');
   });
-  // Elimina la clase hidden a la pagina a mostrar
   const target = document.getElementById(`page-${pagina}`);
   if (target) target.classList.remove('hidden');
 
-  // Muestra el boton correspondiente a la pagina
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.toggle('active', link.dataset.page === pagina);
   });
 
   await cargarDeportesConfig();
 
-  // Utiliza el render de la pagina que se necesite
   switch (pagina) {
     case 'dashboard': await renderDashboard(); break;
     case 'deportes': await renderDeportes(); break;
@@ -141,7 +93,6 @@ async function navegarA(pagina) {
   }
 }
 
-// Se ejecuta nada más iniciar la página para cargar todos los botones
 document.querySelectorAll('.nav-link').forEach(link => {
   link.addEventListener('click', (e) => {
     e.preventDefault();
@@ -153,34 +104,26 @@ document.querySelectorAll('.nav-link').forEach(link => {
    DASHBOARD
    ============================================================ */
 
-/**
- * Carga la información del panel principal a partir de la información del usuario en tiempo real
- */
 async function renderDashboard() {
-  // Obtiene el usuario actual desde Auth.js
   const usuario = await Auth.usuarioActual();
   if (!usuario) return;
 
-  // Recoge el nombre del usuario
   const primerNombre = usuario.Nombre.split(' ')[0];
   document.getElementById('hero-user-name').textContent = primerNombre;
 
-  // Recoge todas las suscripciones y reservas del usuario para filtrar las activas
   const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
   const subsActivas = subs.filter(s => s.Estado === 'activa').length;
   const reservas = await DB.Reserva.listarPorUsuario(usuario.US_DNI);
 
-  // Actualiza los contadores del dashboard
   document.getElementById('stat-subs').textContent = subsActivas;
   document.getElementById('stat-reservas').textContent = reservas.length;
 
-  // Próximas reservas (como máximo 4)
+  // Próximas reservas
   const containerReservas = document.getElementById('dashboard-reservas');
   const proximas = reservas
     .filter(r => new Date(r.Fecha_Inicio) >= new Date())
     .slice(0, 4);
 
-  // Si no hay próximas muestra un mensaje; si las hay genera el HTML junto a los listener para los botones de cancelar
   if (proximas.length === 0) {
     containerReservas.innerHTML = `<div class="empty-state">No tienes clases próximas reservadas. <a href="#" data-page="reservas" class="nav-link-inline">Reservar ahora →</a></div>`;
   } else {
@@ -190,7 +133,7 @@ async function renderDashboard() {
     });
   }
 
-  // Carga todos los deportes y comprueba que el usuario tiene la suscripción activa por deporte
+  // Tarjetas de deportes
   const dashDeportes = document.getElementById('dash-deportes');
   const deportesList = Object.keys(DEPORTES_CONFIG);
 
@@ -204,7 +147,6 @@ async function renderDashboard() {
       deportesList.map(key => DB.Subscricion.tieneActiva(usuario.US_DNI, key))
     );
 
-    // Genera las tarjetas de deportes al usuario
     dashDeportes.innerHTML = deportesList.map((key, i) => {
       const cfg = DEPORTES_CONFIG[key];
       const activo = activosPorDeporte[i];
@@ -217,23 +159,16 @@ async function renderDashboard() {
         </div>`;
     }).join('');
 
-    // Permite direccionar en los deportes que se seleccionan a la suscripción
     dashDeportes.querySelectorAll('.sport-card').forEach(card => {
       card.addEventListener('click', () => navegarA('suscripciones'));
     });
   }
 
-  // Enlaces dentro del mensaje
   containerReservas.querySelectorAll('.nav-link-inline').forEach(a => {
     a.addEventListener('click', (e) => { e.preventDefault(); navegarA(a.dataset.page); });
   });
 }
 
-/**
- * Genera el HTML con la reserva con el objeto pasado por parametro
- * @param {object} r Objeto que recoge todos los datos de la reserva
- * @returns {string} HTML con toda la reserva generada
- */
 function reservaItemHTML(r) {
   const cfg = DEPORTES_CONFIG[r.Deporte] || {};
   const color = r.DeporteColor || cfg.color || '#fff';
@@ -255,11 +190,7 @@ function reservaItemHTML(r) {
    DEPORTES (vista pública)
    ============================================================ */
 
-/**
- * Crea la pagina de deportes y la renderiza
- */
 async function renderDeportes() {
-  // Variables para almacenar las tarjetas de deporte, profesores y clases de la base de datos
   const grid = document.getElementById('deportes-grid');
   const profesores = await DB.Profesor.listarTodos();
   const clases = await DB.Clases.listarTodas();
@@ -269,12 +200,10 @@ async function renderDeportes() {
     return;
   }
 
-  // Genera una tarjeta por deporte con sus profesores y clases correspondiente
   grid.innerHTML = Object.entries(DEPORTES_CONFIG).map(([key, cfg]) => {
     const profs = profesores.filter(p => p.Especialidad === key);
     const clasesDeporte = clases.filter(c => c.Deporte === key);
 
-    // Genera el HTML de cada profesor
     const profesoresHTML = profs.map(prof => {
       const clase = clasesDeporte.find(c => c.PRO_DNI === prof.PRO_DNI);
       return `
@@ -308,25 +237,18 @@ async function renderDeportes() {
    RESERVAS
    ============================================================ */
 
-/**
- * Funcion que prepara la página de reservas y carga todos los deportes, clases e historial
- */
 async function renderPaginaReservas() {
-  // Obtiene el usuario actual
   const usuario = await Auth.usuarioActual();
   if (!usuario) return;
 
-  // Obtiene selector de todos los deportes y lo reinicia
   const selectDeporte = document.getElementById('reserva-deporte');
   selectDeporte.innerHTML = '<option value="">— Selecciona deporte —</option>';
 
-  // Comprueba en paralelo si el usuario tiene suscripción activa a cada deporte
   const deportesList = Object.keys(DEPORTES_CONFIG);
   const activosPorDeporte = await Promise.all(
     deportesList.map(key => DB.Subscricion.tieneActiva(usuario.US_DNI, key))
   );
 
-  // Añade los deportes a los que esté suscrito
   deportesList.forEach((key, i) => {
     if (activosPorDeporte[i]) {
       const cfg = DEPORTES_CONFIG[key];
@@ -337,46 +259,68 @@ async function renderPaginaReservas() {
     }
   });
 
-  // En caso de que no exista ninguna suscripción
   if (selectDeporte.options.length === 1) {
     selectDeporte.innerHTML = '<option value="">No tienes suscripciones activas</option>';
   }
 
-  // Fecha mínima = hoy
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('reserva-fecha').min = hoy;
   document.getElementById('reserva-fecha').value = hoy;
 
-  // Listener: al cambiar deporte, cargar sus clases.
-  // Clonamos el nodo para eliminar listeners previos y evitar duplicados
   const nuevoSelect = selectDeporte.cloneNode(true);
   selectDeporte.parentNode.replaceChild(nuevoSelect, selectDeporte);
 
-  // Si el deporte cambia carga las clases del mismo
   nuevoSelect.addEventListener('change', async () => {
     const deporte = nuevoSelect.value;
     const selectClase = document.getElementById('reserva-clase');
     selectClase.innerHTML = '';
 
-    // Muestra el mensaje en caso de no elegir deporte y resetea los límites de fecha
     if (!deporte) {
       selectClase.innerHTML = '<option value="">— Primero selecciona deporte —</option>';
-      // Resetea los límites del input de fecha al deseleccionar deporte
       const fi = document.getElementById('reserva-fecha');
       fi.min = new Date().toISOString().split('T')[0];
       fi.max = '';
       return;
     }
 
-    // Obtiene las clases del deporte
     const clases = await DB.Clases.listarPorDeporte(deporte);
     if (clases.length === 0) {
       selectClase.innerHTML = '<option value="">Sin clases disponibles</option>';
       return;
     }
 
-    // Añade las clases al selector
-    for (const c of clases) {
+    // Calcular edad del usuario
+    const fnac = new Date(usuario.F_Nacimiento);
+    const hoyDate = new Date();
+    let edadUsuario = hoyDate.getFullYear() - fnac.getFullYear();
+    const m = hoyDate.getMonth() - fnac.getMonth();
+    if (m < 0 || (m === 0 && hoyDate.getDate() < fnac.getDate())) edadUsuario--;
+
+    // Obtener categorías del deporte y encontrar la del usuario
+    const categoriasDeporte = await DB.Categoria.listarPorDeporte(deporte);
+    const categoriaUsuario = categoriasDeporte.find(
+      cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax
+    );
+
+    // Filtrar clases: solo las que corresponden a la categoría del usuario
+    // Si la clase no tiene Categoria asignada, o no hay categorías definidas, se muestra igual
+    const clasesFiltradas = categoriasDeporte.length === 0
+      ? clases
+      : clases.filter(c => {
+          if (!c.Categoria) return false; // clase sin categoría asignada → no mostrar
+          if (!categoriaUsuario) return false; // usuario fuera de rango → no mostrar ninguna
+          return c.Categoria === categoriaUsuario.id;
+        });
+
+    if (clasesFiltradas.length === 0) {
+      const msg = categoriaUsuario
+        ? `<option value="">Sin clases para tu categoría (${categoriaUsuario.Nombre})</option>`
+        : `<option value="">No hay categoría disponible para tu edad (${edadUsuario} años)</option>`;
+      selectClase.innerHTML = msg;
+      return;
+    }
+
+    for (const c of clasesFiltradas) {
       const prof = c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null;
       const opt = document.createElement('option');
       opt.value = c.id;
@@ -384,37 +328,27 @@ async function renderPaginaReservas() {
       selectClase.appendChild(opt);
     }
 
-    // Obtiene la suscripción activa del usuario para limitar el rango de fechas reservables
     const sub = await DB.Subscricion.obtenerActiva(usuario.US_DNI, deporte);
     if (sub) {
       const hoyStr = new Date().toISOString().split('T')[0];
       const fechaInput = document.getElementById('reserva-fecha');
-      // Establece el mínimo como el mayor entre hoy y el inicio de la suscripción
       fechaInput.min = sub.Fecha_Inicio > hoyStr ? sub.Fecha_Inicio : hoyStr;
-      // Establece el máximo como la fecha de fin de la suscripción
       fechaInput.max = sub.Fecha_Fin;
-      // Si el valor actual del input queda fuera del rango lo corrige al mínimo permitido
       if (fechaInput.value < fechaInput.min || fechaInput.value > sub.Fecha_Fin) {
         fechaInput.value = fechaInput.min;
       }
     }
   });
 
-  // Botón reservar — clonar para evitar listeners duplicados
   const btnReserva = document.getElementById('btn-hacer-reserva');
   const nuevoBtn = btnReserva.cloneNode(true);
   btnReserva.parentNode.replaceChild(nuevoBtn, btnReserva);
   nuevoBtn.addEventListener('click', hacerReserva);
 
-  // Renderiza el historial de reservas
   await renderHistorialReservas();
 }
 
-/**
- * Funcion que valida y crea una reserva de la clase
- */
 async function hacerReserva() {
-  // Variables de usuario y elementos del formulario
   const usuario = await Auth.usuarioActual();
   const deporteEl = document.getElementById('reserva-deporte');
   const claseEl = document.getElementById('reserva-clase');
@@ -422,26 +356,22 @@ async function hacerReserva() {
   const msgErr = document.getElementById('reserva-msg');
   const msgOk = document.getElementById('reserva-ok');
 
-  // Oculta mensajes previos
   toggle(msgErr, false);
   toggle(msgOk, false);
 
   const Clase_ID = claseEl.value;
   const Fecha = fechaEl.value;
 
-  // Validaciones de valores del formulario
   if (!deporteEl.value) { msgErr.textContent = 'Selecciona un deporte.'; toggle(msgErr, true); return; }
   if (!Clase_ID) { msgErr.textContent = 'Selecciona una clase.'; toggle(msgErr, true); return; }
   if (!Fecha) { msgErr.textContent = 'Selecciona una fecha.'; toggle(msgErr, true); return; }
 
-  // Comprueba que las fechas sean dentro del horario normal (lunes a viernes)
   const diaSemana = new Date(Fecha + 'T12:00:00').getDay();
   if (diaSemana === 0 || diaSemana === 6) {
     msgErr.textContent = 'Las clases son de lunes a viernes.';
     toggle(msgErr, true); return;
   }
 
-  // Crea la reserva; en caso de error lo muestra
   const resultado = await DB.Reserva.crear({ US_DNI: usuario.US_DNI, Clase_ID, Fecha });
 
   if (!resultado.ok) {
@@ -450,7 +380,6 @@ async function hacerReserva() {
     return;
   }
 
-  // Mensaje de corroboración y actualización del dashboard
   msgOk.textContent = `¡Reserva realizada correctamente para el ${formatFechaSola(Fecha)}!`;
   toggle(msgOk, true);
   await renderHistorialReservas();
@@ -459,31 +388,22 @@ async function hacerReserva() {
   document.getElementById('stat-reservas').textContent = reservas.length;
 }
 
-/**
- * Funcion que muestra las reservas del usuario
- */
 async function renderHistorialReservas() {
   const usuario = await Auth.usuarioActual();
   const container = document.getElementById('reservas-historial');
   const reservas = await DB.Reserva.listarPorUsuario(usuario.US_DNI);
 
-  // Comprobar reservas y mostrar mensaje en consecuencia
   if (reservas.length === 0) {
     container.innerHTML = '<div class="empty-state">No tienes reservas todavía.</div>';
     return;
   }
 
-  // HTML de cada reserva y listener para cancelar
   container.innerHTML = reservas.map(r => reservaItemHTML(r)).join('');
   container.querySelectorAll('.btn-cancelar-reserva').forEach(btn => {
     btn.addEventListener('click', () => cancelarReserva(btn.dataset.id));
   });
 }
 
-/**
- * Función que cancela una reserva por su ID.
- * @param {string} id Identificador de la reserva a cancelar
- */
 async function cancelarReserva(id) {
   const usuario = await Auth.usuarioActual();
   const resultado = await DB.Reserva.cancelar(id, usuario.US_DNI);
@@ -497,34 +417,21 @@ async function cancelarReserva(id) {
    SUSCRIPCIONES
    ============================================================ */
 
-// Inicialización de variable global para la suscripción a cancelar
 let _cancelarSubId = null;
 
-/**
- * Renderiza la pagina de suscripciones del usuario en caso de que exista uno y sus planes disponibles
- */
 async function renderSuscripciones() {
-  // Obtención de usuario actual
   const usuario = await Auth.usuarioActual();
   if (!usuario) return;
-  // Si lo encuentra renderiza sus suscripciones y los planes disponibles
   await renderMisSuscripciones();
   await renderPlanesContratacion();
 }
 
-/**
- * Muestra todas las suscripciones activas y calcula los dias restantes junto a la creación de iconos correspondiente
- */
 async function renderMisSuscripciones() {
-  // Creación de variables y recolección del usuario actual
   const usuario = await Auth.usuarioActual();
   const container = document.getElementById('mis-suscripciones');
-  // Obtención de todas las suscripciones del usuario
   const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
-  // Filtro para solo las activas
   const activas = subs.filter(s => s.Estado === 'activa');
 
-  // En caso de no tener suscripciones activas muestra el mensaje
   if (activas.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
@@ -534,7 +441,6 @@ async function renderMisSuscripciones() {
     return;
   }
 
-  // Caso contrario muestra sus suscripciones activas
   container.innerHTML = activas.map(s => {
     const cfg = DEPORTES_CONFIG[s.Deporte] || {};
     const hoy = new Date();
@@ -564,17 +470,12 @@ async function renderMisSuscripciones() {
       </div>`;
   }).join('');
 
-  // Listener para cancelar la suscripción
   container.querySelectorAll('.btn-cancelar-sub').forEach(btn => {
     btn.addEventListener('click', () => abrirModalCancelacion(btn.dataset.id));
   });
 }
 
-/**
- * Muestra los planes de contratación disponibles para cada deporte
- */
 async function renderPlanesContratacion() {
-  // Recoge al usuario actual y guardamos los planes
   const usuario = await Auth.usuarioActual();
   const container = document.getElementById('planes-grid');
   const deportesList = Object.entries(DEPORTES_CONFIG);
@@ -584,25 +485,71 @@ async function renderPlanesContratacion() {
     return;
   }
 
-  // Mostrar un div con la clase plan-card plan-skeleton mientras carga
   container.innerHTML = deportesList.map(() =>
     `<div class="plan-card plan-skeleton"></div>`
   ).join('');
 
-  // Comprueba si el usuario tiene suscripción activa por deporte
   const activosPorDeporte = await Promise.all(
     deportesList.map(([key]) => DB.Subscricion.tieneActiva(usuario.US_DNI, key))
   );
 
-  // Genera las tarjetas de planes
+  // Calcular edad del usuario una sola vez
+  const hoy = new Date();
+  const fnac = new Date(usuario.F_Nacimiento);
+  let edadUsuario = hoy.getFullYear() - fnac.getFullYear();
+  const mDiff = hoy.getMonth() - fnac.getMonth();
+  if (mDiff < 0 || (mDiff === 0 && hoy.getDate() < fnac.getDate())) edadUsuario--;
+
+  // Cargar categorías de todos los deportes en paralelo
+  const categoriasPorDeporte = await Promise.all(
+    deportesList.map(([key]) => DB.Categoria.listarPorDeporte(key))
+  );
+
+  // Determinar si el usuario puede suscribirse a cada deporte
+  const puedeContratar = deportesList.map(([, ], i) => {
+    const cats = categoriasPorDeporte[i];
+    if (cats.length === 0) return true; // Sin restricción de edad
+    return cats.some(cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax);
+  });
+
+  // Encontrar la categoría del usuario para cada deporte
+  const categoriaUsuario = deportesList.map(([, ], i) => {
+    const cats = categoriasPorDeporte[i];
+    return cats.find(cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax) || null;
+  });
+
   container.innerHTML = deportesList.map(([key, cfg], i) => {
     const yaActivo = activosPorDeporte[i];
+    const puede = puedeContratar[i];
+    const cats = categoriasPorDeporte[i];
+    const catUsuario = categoriaUsuario[i];
+
+    // Construir el bloque de info de edad
+    let edadInfoHTML = '';
+    if (cats.length > 0) {
+      if (catUsuario) {
+        edadInfoHTML = `
+          <div class="plan-edad-info plan-edad-ok">
+            ✅ Tu categoría: <strong>${catUsuario.Nombre}</strong>
+            <span style="opacity:0.7">(${catUsuario.EdadMin}–${catUsuario.EdadMax} años)</span>
+          </div>`;
+      } else {
+        const rangos = cats.map(c => `${c.Nombre}: ${c.EdadMin}–${c.EdadMax} años`).join(' · ');
+        edadInfoHTML = `
+          <div class="plan-edad-info plan-edad-error">
+            ⛔ Tu edad (${edadUsuario} años) no está en ninguna categoría
+            <div style="font-size:11px;margin-top:3px;opacity:0.75">${rangos}</div>
+          </div>`;
+      }
+    }
+
     return `
-      <div class="plan-card ${yaActivo ? 'plan-card--suscrito' : ''}" style="--sport-color:${cfg.color}" data-deporte="${key}">
+      <div class="plan-card ${yaActivo ? 'plan-card--suscrito' : ''} ${!puede && !yaActivo ? 'plan-card--bloqueado' : ''}" style="--sport-color:${cfg.color}" data-deporte="${key}">
         ${yaActivo ? `<div class="plan-badge-suscrito">✓ SUSCRITO</div>` : ''}
+        ${!puede && !yaActivo ? `<div class="plan-badge-bloqueado">⛔ SIN ACCESO</div>` : ''}
         <div class="plan-sport-name"><span>${cfg.icon}</span> ${cfg.label}</div>
-        <div id="plan-edad-${key}" class="plan-edad-info" style="font-size:12px;color:var(--clr-muted);margin-bottom:0.5rem;min-height:16px"></div>
-        <div class="plan-options ${yaActivo ? 'plan-options--disabled' : ''}">
+        ${edadInfoHTML}
+        <div class="plan-options ${yaActivo || !puede ? 'plan-options--disabled' : ''}">
           <div class="plan-option selected" data-modalidad="mensual" data-deporte="${key}">
             <div class="plan-option-label">Mensual</div>
             <div class="plan-option-price" style="color:${cfg.color}">${cfg.precio.mensual}€</div>
@@ -621,63 +568,43 @@ async function renderPlanesContratacion() {
           </div>
         </div>
         ${yaActivo
-        ? `<div class="plan-ya-activo"><span style="color:var(--clr-success)">✓</span> Ya tienes este deporte activo</div>`
-        : `<button class="btn-contratar full" data-deporte="${key}" style="--btn-color:${cfg.color}">Suscribirse a ${cfg.label}</button>`
-      }
+          ? `<div class="plan-ya-activo"><span style="color:var(--clr-success)">✓</span> Ya tienes este deporte activo</div>`
+          : puede
+            ? `<button class="btn-contratar full" data-deporte="${key}" style="--btn-color:${cfg.color}">Suscribirse a ${cfg.label}</button>`
+            : `<button class="btn-contratar full btn-contratar--bloqueado" disabled data-deporte="${key}" title="Tu edad (${edadUsuario} años) no cumple los requisitos de ninguna categoría">
+                 ⛔ No cumples los requisitos de edad
+               </button>`
+        }
       </div>`;
   }).join('');
 
-  // Cargar y mostrar rangos de edad por deporte
-  deportesList.forEach(async ([key]) => {
-    const el = document.getElementById(`plan-edad-${key}`);
-    if (!el) return;
-    const cats = await DB.Categoria.listarPorDeporte(key);
-    if (cats.length === 0) {
-      el.textContent = '';
-    } else {
-      el.textContent = '👥 ' + cats.map(c => `${c.Nombre}: ${c.EdadMin}–${c.EdadMax} años`).join(' · ');
-    }
-  });
-
-  // Permite al usuario seleccionar la modalidad
   container.querySelectorAll('.plan-option').forEach(opt => {
     opt.addEventListener('click', () => {
       const deporte = opt.dataset.deporte;
       const card = container.querySelector(`.plan-card[data-deporte="${deporte}"]`);
-      // No deja cambiar modalidad en caso de que ya esté suscrito ese usuario
-      if (card.classList.contains('plan-card--suscrito')) return;
-      // Elimina la selección anterior y permite marcar una nueva añadiendo la clase selected
+      if (card.classList.contains('plan-card--suscrito') || card.classList.contains('plan-card--bloqueado')) return;
       container.querySelectorAll(`.plan-option[data-deporte="${deporte}"]`)
         .forEach(o => o.classList.remove('selected'));
       opt.classList.add('selected');
     });
   });
 
-  // Contratar suscripción
-  container.querySelectorAll('.btn-contratar').forEach(btn => {
+  container.querySelectorAll('.btn-contratar:not([disabled])').forEach(btn => {
     btn.addEventListener('click', async () => {
       const deporte = btn.dataset.deporte;
       const cfg = DEPORTES_CONFIG[deporte];
-      // Obtención de la modalidad seleccionada anteriormente
       const modalidadOpt = container.querySelector(`.plan-option.selected[data-deporte="${deporte}"]`);
       const modalidad = modalidadOpt ? modalidadOpt.dataset.modalidad : 'mensual';
 
-      // Estado de carga del botón
       btn.disabled = true;
       btn.textContent = 'Procesando…';
       btn.style.opacity = '0.7';
 
-      // Validar edad del usuario contra las categorías del deporte
+      // Segunda validación de seguridad en el servidor
       const categoriasDeporte = await DB.Categoria.listarPorDeporte(deporte);
       if (categoriasDeporte.length > 0) {
-        const hoy = new Date();
-        const fnac = new Date(usuario.F_Nacimiento);
-        let edad = hoy.getFullYear() - fnac.getFullYear();
-        const mDiff = hoy.getMonth() - fnac.getMonth();
-        if (mDiff < 0 || (mDiff === 0 && hoy.getDate() < fnac.getDate())) edad--;
-
         const categoriaValida = categoriasDeporte.some(
-          cat => edad >= cat.EdadMin && edad <= cat.EdadMax
+          cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax
         );
 
         if (!categoriaValida) {
@@ -688,17 +615,15 @@ async function renderPlanesContratacion() {
           btn.textContent = `Suscribirse a ${cfg.label}`;
           btn.style.opacity = '';
           mostrarToast(
-            `No puedes suscribirte a ${cfg.label}. Tu edad (${edad} años) no encaja en ninguna categoría disponible: ${rangos}.`,
+            `No puedes suscribirte a ${cfg.label}. Tu edad (${edadUsuario} años) no encaja en ninguna categoría: ${rangos}.`,
             'error'
           );
           return;
         }
       }
 
-      // Creación de la suscripción si es posible
       const resultado = await DB.Subscricion.crear({ US_DNI: usuario.US_DNI, Modalidad: modalidad, Deporte: deporte });
 
-      // Muestra error en caso de que exista
       if (!resultado.ok) {
         btn.disabled = false;
         btn.textContent = `Suscribirse a ${cfg.label}`;
@@ -708,11 +633,9 @@ async function renderPlanesContratacion() {
       }
 
       mostrarToast(`¡Suscripción a ${cfg.label} activada! 🎉`, 'success');
-      // Actualiza las suscripciones y planes
       await renderMisSuscripciones();
       await renderPlanesContratacion();
 
-      // Actualizar stat del dashboard si está visible
       const statSubs = document.getElementById('stat-subs');
       if (statSubs) {
         const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
@@ -722,26 +645,17 @@ async function renderPlanesContratacion() {
   });
 }
 
-/**
- * Muestra la configuración de la suscripción para cancelar la misma
- * @param {string} subId ID de la suscripción a cancelar
- */
 function abrirModalCancelacion(subId) {
   _cancelarSubId = subId;
   toggle(document.getElementById('modal-cancelar'), true);
 }
 
-// Crea un listener con un botón para poder cancelar la suscripción seleccionada
 document.getElementById('btn-confirm-cancelar').addEventListener('click', async () => {
-  // Si no hay ninguna seleccionada no hace nada
   if (_cancelarSubId === null) return;
-  // Variables que contienen la información del usuario y suscripción
   const usuario = await Auth.usuarioActual();
   const resultado = await DB.Subscricion.cancelar(_cancelarSubId, usuario.US_DNI);
-  // Si la cancelación es correcta oculta la confirmación y renderiza la lista de suscripciones y planes
   if (resultado.ok) {
     toggle(document.getElementById('modal-cancelar'), false);
-    // Reset de variable para la cancelación
     _cancelarSubId = null;
     await renderMisSuscripciones();
     await renderPlanesContratacion();
@@ -750,14 +664,11 @@ document.getElementById('btn-confirm-cancelar').addEventListener('click', async 
   }
 });
 
-// Listener para cerrar el modal cuando el usuario pulsa cancelar
 document.getElementById('btn-cancel-modal').addEventListener('click', () => {
   toggle(document.getElementById('modal-cancelar'), false);
-  // Reset de variable
   _cancelarSubId = null;
 });
 
-// Listener para cerrar modal cuando el usuario pulsa la "X"
 document.getElementById('close-modal-cancelar').addEventListener('click', () => {
   toggle(document.getElementById('modal-cancelar'), false);
   _cancelarSubId = null;
@@ -767,15 +678,9 @@ document.getElementById('close-modal-cancelar').addEventListener('click', () => 
    PERFIL
    ============================================================ */
 
-/**
- * Listener para abrir el perfil de usuario y carga los datos del usuario junto a sus suscripciones activas
- */
 document.getElementById('btn-perfil').addEventListener('click', async () => {
-  // Obtiene el usuario actual autorizado
   const usuario = await Auth.usuarioActual();
-  // Si no se encuentra no carga nada
   if (!usuario) return;
-  // Obtención de suscripciones activas
   const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
   const activas = subs.filter(s => s.Estado === 'activa');
 
@@ -784,7 +689,6 @@ document.getElementById('btn-perfil').addEventListener('click', async () => {
                     font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.5px">ADMIN</span>`
     : '';
 
-  // Rellena el perfil con los datos del usuario
   document.getElementById('perfil-body').innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.5rem">
       <div style="width:56px;height:56px;border-radius:50%;background:rgba(232,255,71,0.1);
@@ -834,22 +738,18 @@ document.getElementById('btn-perfil').addEventListener('click', async () => {
       </button>
     </div>`;
 
-  // Muestra el perfil
   toggle(document.getElementById('modal-perfil'), true);
 
-  // Listener del botón "Eliminar mi cuenta" (se re-registra cada vez que se abre el perfil)
   document.getElementById('btn-abrir-eliminar-cuenta').addEventListener('click', () => {
     toggle(document.getElementById('modal-perfil'), false);
     toggle(document.getElementById('modal-eliminar-cuenta'), true);
   });
 });
 
-// Listener para cerrar el perfil al pulsar la X
 document.getElementById('close-modal-perfil').addEventListener('click', () => {
   toggle(document.getElementById('modal-perfil'), false);
 });
 
-// Listener para cerrar en caso de que el usuario pulse en cualquier otro sitio que no sea el perfil
 document.getElementById('modal-perfil').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) toggle(e.currentTarget, false);
 });
@@ -858,7 +758,6 @@ document.getElementById('modal-perfil').addEventListener('click', (e) => {
    LOGOUT
    ============================================================ */
 
-// Listener para cerrar la sesion del usuario y recargar la página borrando la sesión anterior
 document.getElementById('btn-logout').addEventListener('click', () => {
   Auth.cerrarSesion();
   location.reload();
@@ -889,7 +788,6 @@ document.getElementById('btn-confirm-eliminar-cuenta').addEventListener('click',
     mostrarToast(resultado.error, 'error');
     return;
   }
-  // Cuenta eliminada → redirigir al login
   location.reload();
 });
 
@@ -906,10 +804,6 @@ const adminState = {
   editandoCategoria: null,
 };
 
-/**
- * Renderiza el panel de administración si el usuario tiene rol admin;
- * en caso contrario muestra un mensaje de acceso denegado.
- */
 async function renderAdmin() {
   const usuario = await Auth.usuarioActual();
   if (!usuario || usuario.Rol !== 'admin') {
@@ -922,9 +816,6 @@ async function renderAdmin() {
   await switchAdminTab(adminState.tabActual);
 }
 
-/**
- * Genera las pestañas de navegación del panel admin y sus listeners
- */
 function renderAdminTabs() {
   const tabs = document.getElementById('admin-tabs');
   if (!tabs) return;
@@ -945,10 +836,6 @@ function renderAdminTabs() {
   });
 }
 
-/**
- * Cambia la pestaña activa del panel admin y renderiza su contenido
- * @param {string} tab Identificador de la pestaña a mostrar
- */
 async function switchAdminTab(tab) {
   adminState.tabActual = tab;
   renderAdminTabs();
@@ -964,10 +851,6 @@ async function switchAdminTab(tab) {
 }
 
 /* --- ADMIN: DEPORTES --- */
-
-/**
- * Renderiza la tabla de deportes en el panel admin con opciones de crear, editar y eliminar
- */
 async function renderAdminDeportes() {
   const content = document.getElementById('admin-content');
   const deportes = await DB.Deporte.listarTodos();
@@ -1018,10 +901,6 @@ async function renderAdminDeportes() {
   });
 }
 
-/**
- * Muestra el formulario inline para crear o editar un deporte
- * @param {object|null} dep Deporte a editar, o null para crear uno nuevo
- */
 function mostrarFormDeporte(dep) {
   const formEl = document.getElementById('form-deporte');
   const esNuevo = !dep;
@@ -1089,11 +968,6 @@ function mostrarFormDeporte(dep) {
   });
 }
 
-/**
- * Muestra el modal de confirmación para eliminar un deporte en cascada
- * @param {string} id ID del deporte a eliminar
- * @param {string} nombre Nombre del deporte para mostrar en el mensaje
- */
 function confirmarEliminarDeporte(id, nombre) {
   const modal = document.getElementById('modal-admin-eliminar');
   document.getElementById('admin-eliminar-msg').innerHTML =
@@ -1117,10 +991,6 @@ function confirmarEliminarDeporte(id, nombre) {
 }
 
 /* --- ADMIN: CATEGORÍAS --- */
-
-/**
- * Renderiza la tabla de categorías en el panel admin con opciones de crear, editar y eliminar
- */
 async function renderAdminCategorias() {
   const content = document.getElementById('admin-content');
   await cargarDeportesConfig();
@@ -1188,11 +1058,6 @@ async function renderAdminCategorias() {
   });
 }
 
-/**
- * Muestra el formulario inline para crear o editar una categoría
- * @param {object|null} cat Categoría a editar, o null para crear una nueva
- * @param {Array} deportesList Lista de deportes disponibles para el selector
- */
 function mostrarFormCategoria(cat, deportesList) {
   const formEl = document.getElementById('form-categoria');
   const esNuevo = !cat;
@@ -1253,10 +1118,6 @@ function mostrarFormCategoria(cat, deportesList) {
 }
 
 /* --- ADMIN: PROFESORES --- */
-
-/**
- * Renderiza la tabla de profesores en el panel admin con opciones de crear, editar y eliminar
- */
 async function renderAdminProfesores() {
   const content = document.getElementById('admin-content');
   const profesores = await DB.Profesor.listarTodos();
@@ -1328,11 +1189,6 @@ async function renderAdminProfesores() {
   });
 }
 
-/**
- * Muestra el formulario inline para crear o editar un profesor
- * @param {object|null} prof Profesor a editar, o null para crear uno nuevo
- * @param {Array} deportesList Lista de deportes disponibles para el selector de especialidad
- */
 function mostrarFormProfesor(prof, deportesList) {
   const formEl = document.getElementById('form-profesor');
   const esNuevo = !prof;
@@ -1397,10 +1253,6 @@ function mostrarFormProfesor(prof, deportesList) {
 }
 
 /* --- ADMIN: CLASES --- */
-
-/**
- * Renderiza la tabla de clases en el panel admin con opciones de crear, editar y eliminar
- */
 async function renderAdminClases() {
   const content = document.getElementById('admin-content');
   const clases = await DB.Clases.listarTodas();
@@ -1474,13 +1326,6 @@ async function renderAdminClases() {
   });
 }
 
-/**
- * Muestra el formulario inline para crear o editar una clase
- * @param {object|null} clase Clase a editar, o null para crear una nueva
- * @param {Array} deportesList Lista de deportes disponibles
- * @param {Array} profesores Lista de profesores disponibles
- * @param {Array} categorias Lista de categorías disponibles
- */
 function mostrarFormClase(clase, deportesList, profesores, categorias) {
   const formEl = document.getElementById('form-clase');
   const esNuevo = !clase;
@@ -1528,7 +1373,7 @@ function mostrarFormClase(clase, deportesList, profesores, categorias) {
 
   formEl.classList.remove('hidden');
 
-  // Al cambiar deporte, filtrar profesores y categorías disponibles
+  // Al cambiar deporte, filtrar profesores y categorías
   document.getElementById('clase-deporte').addEventListener('change', (e) => {
     const depId = e.target.value;
     const selProf = document.getElementById('clase-profesor');
@@ -1594,19 +1439,13 @@ document.getElementById('modal-admin-eliminar').addEventListener('click', (e) =>
    INICIALIZACIÓN (post-login)
    ============================================================ */
 
-// Oculta la pantalla de login y muestra la aplicación cargando el dashboard
 window.App = {
-  /**
-   * Inicialización de la web: oculta el login, muestra la navbar y navega al inicio
-   */
   async iniciar() {
-    // Recoge el usuario actual
     const usuario = await Auth.usuarioActual();
     if (!usuario) return;
 
-    // Oculta la página de autenticación
+    // Ocultar pantalla de auth, mostrar app
     document.getElementById('page-auth').classList.add('hidden');
-    // Muestra barra de navegación, nombre de usuario y las iniciales del usuario
     document.getElementById('navbar').classList.remove('hidden');
     document.getElementById('nav-username').textContent = usuario.Nombre.split(' ')[0];
     document.getElementById('avatar-initials').textContent = iniciales(usuario.Nombre);
@@ -1622,35 +1461,22 @@ window.App = {
     }
 
     await cargarDeportesConfig();
-    await navegarA('reservas');
+    await navegarA('dashboard'); // <--- AHORA NAVEGA A dashboard
   }
 };
 
-/* ============================================================
-   ARRANQUE
-   ============================================================ */
-
-/**
- * Funcion que se ejecuta al cargar la página.
- * Inserta los datos iniciales en la Base de datos en Firestore y
- * Firebase Auth notifica el estado de sesión de forma asíncrona mediante onAuthStateChanged.
- */
+/* ARRANQUE */
 (async function arranque() {
   // Ocultar el formulario de auth mientras se verifica la sesión,
   // para evitar que aparezca brevemente antes de redirigir al dashboard
   const pageAuth = document.getElementById('page-auth');
   pageAuth.classList.add('hidden');
 
-  // Inserta datos iniciales si no existen
   await DB.seed();
 
-  // Quitar overlay de carga
   const overlay = document.getElementById('loading-overlay');
 
-  // Firebase Auth notifica el estado de sesión de forma asíncrona.
-  // onAuthStateChanged se dispara una vez al cargar con el usuario actual (o null).
   firebase.auth().onAuthStateChanged(async (firebaseUser) => {
-    // Aplica animación de desvanecimiento y oculta completamente el overlay
     if (!overlay.classList.contains('hidden')) {
       overlay.classList.add('fade-out');
       setTimeout(() => overlay.classList.add('hidden'), 400);
@@ -1660,7 +1486,7 @@ window.App = {
       // Sesión activa: arrancar app sin mostrar auth en ningún momento
       await window.App.iniciar();
     } else {
-      // Sin sesión → mostrar login y ocultar el resto de páginas
+      // Sin sesión: mostrar el formulario de login
       document.getElementById('navbar').classList.add('hidden');
       pageAuth.classList.remove('hidden');
       document.querySelectorAll('.page:not(#page-auth)').forEach(p => p.classList.add('hidden'));

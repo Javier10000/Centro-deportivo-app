@@ -636,6 +636,51 @@ code { font-family: monospace; background: var(--clr-surface2); padding: 2px 6px
 .plan-card--suscrito { opacity: 0.65; pointer-events: none; }
 .plan-card--suscrito .btn-contratar { pointer-events: none; }
 
+.plan-card--suscrito { opacity: 0.65; pointer-events: none; }
+.plan-card--suscrito .btn-contratar { pointer-events: none; }
+
+/* Tarjeta bloqueada por edad */
+.plan-card--bloqueado { opacity: 0.7; }
+.plan-card--bloqueado .plan-options { opacity: 0.35; pointer-events: none; }
+
+.plan-badge-bloqueado {
+  position: absolute; top: 14px; right: 14px;
+  background: rgba(255, 80, 80, 0.12);
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  color: #ff6b6b;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 9px; border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+/* Bloque de info de edad */
+.plan-edad-info {
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 0.6rem;
+  line-height: 1.4;
+}
+.plan-edad-ok {
+  background: rgba(61, 220, 132, 0.08);
+  border: 1px solid rgba(61, 220, 132, 0.2);
+  color: var(--clr-success);
+}
+.plan-edad-error {
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 80, 80, 0.25);
+  color: #ff6b6b;
+}
+
+/* Botón deshabilitado por edad */
+.btn-contratar--bloqueado {
+  background: rgba(255, 80, 80, 0.12) !important;
+  color: #ff6b6b !important;
+  cursor: not-allowed !important;
+  border: 1px solid rgba(255, 80, 80, 0.25) !important;
+  opacity: 1 !important;
+}
+
 .plan-badge-suscrito {
   position: absolute; top: 14px; right: 14px;
   background: rgba(61,220,132,0.15);
