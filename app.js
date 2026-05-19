@@ -68,7 +68,7 @@ async function cargarDeportesConfig() {
    NAVEGACIÓN
    ============================================================ */
 
-const PAGINAS = ['dashboard', 'deportes', 'reservas', 'suscripciones', 'admin'];
+const PAGINAS = ['dashboard', 'deportes', 'reservas', 'horarios', 'suscripciones', 'admin'];
 
 async function navegarA(pagina) {
   PAGINAS.forEach(p => {
@@ -88,6 +88,7 @@ async function navegarA(pagina) {
     case 'dashboard': await renderDashboard(); break;
     case 'deportes': await renderDeportes(); break;
     case 'reservas': await renderPaginaReservas(); break;
+    case 'horarios': await renderHorarios(); break;
     case 'suscripciones': await renderSuscripciones(); break;
     case 'admin': await renderAdmin(); break;
   }
@@ -289,38 +290,7 @@ async function renderPaginaReservas() {
       return;
     }
 
-    // Calcular edad del usuario
-    const fnac = new Date(usuario.F_Nacimiento);
-    const hoyDate = new Date();
-    let edadUsuario = hoyDate.getFullYear() - fnac.getFullYear();
-    const m = hoyDate.getMonth() - fnac.getMonth();
-    if (m < 0 || (m === 0 && hoyDate.getDate() < fnac.getDate())) edadUsuario--;
-
-    // Obtener categorías del deporte y encontrar la del usuario
-    const categoriasDeporte = await DB.Categoria.listarPorDeporte(deporte);
-    const categoriaUsuario = categoriasDeporte.find(
-      cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax
-    );
-
-    // Filtrar clases: solo las que corresponden a la categoría del usuario
-    // Si la clase no tiene Categoria asignada, o no hay categorías definidas, se muestra igual
-    const clasesFiltradas = categoriasDeporte.length === 0
-      ? clases
-      : clases.filter(c => {
-          if (!c.Categoria) return false; // clase sin categoría asignada → no mostrar
-          if (!categoriaUsuario) return false; // usuario fuera de rango → no mostrar ninguna
-          return c.Categoria === categoriaUsuario.id;
-        });
-
-    if (clasesFiltradas.length === 0) {
-      const msg = categoriaUsuario
-        ? `<option value="">Sin clases para tu categoría (${categoriaUsuario.Nombre})</option>`
-        : `<option value="">No hay categoría disponible para tu edad (${edadUsuario} años)</option>`;
-      selectClase.innerHTML = msg;
-      return;
-    }
-
-    for (const c of clasesFiltradas) {
+    for (const c of clases) {
       const prof = c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null;
       const opt = document.createElement('option');
       opt.value = c.id;
@@ -418,6 +388,109 @@ async function cancelarReserva(id) {
    ============================================================ */
 
 let _cancelarSubId = null;
+
+/* ============================================================
+   HORARIOS
+   ============================================================ */
+
+const DIAS_SEMANA = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+
+async function renderHorarios() {
+  await cargarDeportesConfig();
+  const usuario = await Auth.usuarioActual();
+  const todasClases = await DB.Clases.listarTodas();
+  const deportesList = Object.entries(DEPORTES_CONFIG);
+
+  const filtrosEl = document.getElementById('horarios-filtros');
+  const tablaEl = document.getElementById('horarios-tabla');
+
+  // Filtro por deporte
+  filtrosEl.innerHTML = `
+    <div class="field" style="max-width:220px">
+      <label>Filtrar por deporte</label>
+      <select id="horario-filtro-deporte">
+        <option value="">Todos los deportes</option>
+        ${deportesList.map(([key, cfg]) => `<option value="${key}">${cfg.icon} ${cfg.label}</option>`).join('')}
+      </select>
+    </div>`;
+
+  const renderTabla = async (filtroDeporte) => {
+    const clases = filtroDeporte
+      ? todasClases.filter(c => c.Deporte === filtroDeporte)
+      : todasClases;
+
+    // Recopilar todas las horas únicas ordenadas
+    const horasSet = new Set();
+    clases.forEach(c => {
+      const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
+      if (match) horasSet.add(match[0]);
+    });
+    const horas = [...horasSet].sort();
+
+    if (clases.length === 0) {
+      tablaEl.innerHTML = '<div class="empty-state">No hay clases para mostrar.</div>';
+      return;
+    }
+
+    // Construir mapa dia->hora->clases
+    const mapa = {};
+    DIAS_SEMANA.forEach(d => { mapa[d] = {}; horas.forEach(h => { mapa[d][h] = []; }); });
+
+    for (const c of clases) {
+      const cfg = DEPORTES_CONFIG[c.Deporte] || {};
+      const prof = c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null;
+      const horarioUpper = c.Horario.toUpperCase();
+      DIAS_SEMANA.forEach(dia => {
+        const diaAbrev = dia.substring(0, 3).toUpperCase();
+        const diaAlt = dia === 'Miercoles' ? 'MIE' : diaAbrev;
+        if (horarioUpper.includes(diaAbrev) || horarioUpper.includes(diaAlt) || horarioUpper.includes(dia.toUpperCase())) {
+          const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
+          const hora = match ? match[0] : null;
+          if (hora && mapa[dia][hora] !== undefined) {
+            mapa[dia][hora].push({ ...c, cfg, profNombre: prof ? prof.Nombre : null });
+          }
+        }
+      });
+    }
+
+    tablaEl.innerHTML = `
+      <div class="horario-scroll">
+        <table class="horario-table">
+          <thead>
+            <tr>
+              <th class="hora-col">Hora</th>
+              ${DIAS_SEMANA.map(d => `<th>${d}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${horas.map(hora => `
+              <tr>
+                <td class="hora-cell">${hora}</td>
+                ${DIAS_SEMANA.map(dia => {
+                  const items = mapa[dia][hora];
+                  if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
+                  return `<td class="celda-clase">
+                    ${items.map(it => `
+                      <div class="horario-pill" style="background:${it.cfg.color || '#888'}22;border-left:3px solid ${it.cfg.color || '#888'}">
+                        <span class="pill-deporte" style="color:${it.cfg.color || '#888'}">${it.cfg.icon || ''} ${it.cfg.label || it.Deporte}</span>
+                        <span class="pill-desc">${it.Descripcion}</span>
+                        ${it.Pista ? `<span class="pill-pista">📍 ${it.Pista}</span>` : ''}
+                        ${it.profNombre ? `<span class="pill-prof">👤 ${it.profNombre}</span>` : ''}
+                      </div>`).join('')}
+                  </td>`;
+                }).join('')}
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  };
+
+  await renderTabla('');
+
+  document.getElementById('horario-filtro-deporte').addEventListener('change', async (e) => {
+    await renderTabla(e.target.value);
+  });
+}
 
 async function renderSuscripciones() {
   const usuario = await Auth.usuarioActual();
@@ -824,6 +897,7 @@ function renderAdminTabs() {
     { id: 'categorias', label: '🏷️ Categorías' },
     { id: 'profesores', label: '👨‍🏫 Profesores' },
     { id: 'clases', label: '📅 Clases' },
+    { id: 'horarios', label: '🗓️ Horarios' },
   ];
 
   tabs.innerHTML = tabsList.map(t => `
@@ -847,6 +921,7 @@ async function switchAdminTab(tab) {
     case 'categorias': await renderAdminCategorias(); break;
     case 'profesores': await renderAdminProfesores(); break;
     case 'clases': await renderAdminClases(); break;
+    case 'horarios': await renderAdminHorarios(); break;
   }
 }
 
@@ -1418,6 +1493,127 @@ function mostrarFormClase(clase, deportesList, profesores, categorias) {
 
     mostrarToast(esNuevo ? '¡Clase creada!' : '¡Clase actualizada!', 'success');
     await renderAdminClases();
+  });
+}
+
+/* --- ADMIN: HORARIOS --- */
+async function renderAdminHorarios() {
+  const content = document.getElementById('admin-content');
+  await cargarDeportesConfig();
+  const deportesList = Object.entries(DEPORTES_CONFIG);
+  const profesores = await DB.Profesor.listarTodos();
+  const todasClases = await DB.Clases.listarTodas();
+
+  const renderVista = async (filtroDeporte) => {
+    const clases = filtroDeporte
+      ? todasClases.filter(c => c.Deporte === filtroDeporte)
+      : todasClases;
+
+    const horasSet = new Set();
+    clases.forEach(c => {
+      const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
+      if (match) horasSet.add(match[0]);
+    });
+    const horas = [...horasSet].sort();
+
+    const mapa = {};
+    DIAS_SEMANA.forEach(d => { mapa[d] = {}; horas.forEach(h => { mapa[d][h] = []; }); });
+
+    for (const c of clases) {
+      const cfg = DEPORTES_CONFIG[c.Deporte] || {};
+      const prof = profesores.find(p => p.PRO_DNI === c.PRO_DNI);
+      const horarioUpper = c.Horario.toUpperCase();
+      DIAS_SEMANA.forEach(dia => {
+        const diaAbrev = dia.substring(0, 3).toUpperCase();
+        if (horarioUpper.includes(diaAbrev) || horarioUpper.includes(dia.toUpperCase())) {
+          const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
+          const hora = match ? match[0] : null;
+          if (hora && mapa[dia][hora] !== undefined) {
+            mapa[dia][hora].push({ ...c, cfg, profNombre: prof ? prof.Nombre : null });
+          }
+        }
+      });
+    }
+
+    return `
+      <div class="horario-scroll">
+        <table class="horario-table">
+          <thead>
+            <tr>
+              <th class="hora-col">Hora</th>
+              ${DIAS_SEMANA.map(d => `<th>${d}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${horas.length === 0 ? `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--clr-muted)">No hay clases. Créalas en la pestaña Clases.</td></tr>` :
+              horas.map(hora => `
+              <tr>
+                <td class="hora-cell">${hora}</td>
+                ${DIAS_SEMANA.map(dia => {
+                  const items = mapa[dia][hora];
+                  if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
+                  return `<td class="celda-clase">
+                    ${items.map(it => `
+                      <div class="horario-pill" style="background:${it.cfg.color || '#888'}22;border-left:3px solid ${it.cfg.color || '#888'}">
+                        <span class="pill-deporte" style="color:${it.cfg.color || '#888'}">${it.cfg.icon || ''} ${it.cfg.label || it.Deporte}</span>
+                        <span class="pill-desc">${it.Descripcion}</span>
+                        ${it.Pista ? `<span class="pill-pista">📍 ${it.Pista}</span>` : ''}
+                        ${it.profNombre ? `<span class="pill-prof">👤 ${it.profNombre}</span>` : ''}
+                        <button class="pill-edit-btn btn-ghost btn-sm" data-id="${it.id}">✏️ Editar</button>
+                      </div>`).join('')}
+                  </td>`;
+                }).join('')}
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  };
+
+  const vistaHTML = await renderVista('');
+
+  content.innerHTML = `
+    <div class="admin-section-header">
+      <h3 class="admin-section-title">🗓️ Horario Semanal</h3>
+      <div style="display:flex;gap:1rem;align-items:center">
+        <select id="admin-horario-filtro" style="padding:0.4rem 0.8rem;background:var(--clr-surface);color:var(--clr-text);border:1px solid var(--clr-border);border-radius:6px">
+          <option value="">Todos los deportes</option>
+          ${deportesList.map(([key, cfg]) => `<option value="${key}">${cfg.icon} ${cfg.label}</option>`).join('')}
+        </select>
+        <span style="color:var(--clr-muted);font-size:13px">Edita las clases desde la pestaña <strong>Clases</strong></span>
+      </div>
+    </div>
+    <div id="admin-horario-vista">${vistaHTML}</div>`;
+
+  document.getElementById('admin-horario-filtro').addEventListener('change', async (e) => {
+    document.getElementById('admin-horario-vista').innerHTML = '<div class="admin-loading">Cargando…</div>';
+    document.getElementById('admin-horario-vista').innerHTML = await renderVista(e.target.value);
+    // Reasignar listeners de editar
+    document.querySelectorAll('.pill-edit-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const snap = await firebase.firestore().collection('Clases').doc(btn.dataset.id).get();
+        if (snap.exists) {
+          const cats = await DB.Categoria.listarTodas();
+          mostrarFormClase({ id: snap.id, ...snap.data() }, deportesList, profesores, cats);
+          adminState.tabActual = 'clases';
+        }
+      });
+    });
+  });
+
+  // Botones editar en la vista inicial
+  content.querySelectorAll('.pill-edit-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const snap = await firebase.firestore().collection('Clases').doc(btn.dataset.id).get();
+      if (snap.exists) {
+        const cats = await DB.Categoria.listarTodas();
+        adminState.tabActual = 'clases';
+        renderAdminTabs();
+        const formContent = document.getElementById('admin-content');
+        formContent.innerHTML = '<div id="form-clase" class="admin-form"></div><div id="admin-horarios-back" style="margin-top:1rem"><button class="btn-ghost" id="btn-volver-horarios">← Volver a Horarios</button></div>';
+        mostrarFormClase({ id: snap.id, ...snap.data() }, deportesList, profesores, cats);
+        document.getElementById('btn-volver-horarios').addEventListener('click', () => switchAdminTab('horarios'));
+      }
+    });
   });
 }
 
