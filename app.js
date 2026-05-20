@@ -1,7 +1,10 @@
 /**
  * app.js — Controlador principal de la aplicación
  * Gestiona: navegación, dashboard, deportes, reservas, suscripciones y panel admin.
+<<<<<<< HEAD
  * Prueba jose manuel
+=======
+>>>>>>> 8756bf6a5a7efc68ce728732a574fdd065431c39
  */
 
 /* ============================================================
