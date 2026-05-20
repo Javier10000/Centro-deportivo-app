@@ -360,7 +360,17 @@ const DB = (() => {
      TABLA: Reserva
      ============================================================ */
   const Reserva = {
-    async crear({ US_DNI, Clase_ID, Fecha }) {
+    /**
+     * Crea una reserva para el usuario indicado.
+     * Si la reserva es para un tercero, se persiste el objeto `tercero`:
+     *   { Nombre, Edad, Telefono, Alergias, DNI? }
+     *
+     * @param {string}      US_DNI    DNI del usuario titular de la suscripción
+     * @param {string}      Clase_ID  ID de la clase
+     * @param {string}      Fecha     Fecha en formato YYYY-MM-DD
+     * @param {object|null} tercero   Datos de la persona ajena (opcional)
+     */
+    async crear({ US_DNI, Clase_ID, Fecha, tercero = null }) {
       const clase = await Clases.buscarPorId(Clase_ID);
       if (!clase) return { ok: false, error: 'La clase no existe.' };
 
@@ -386,6 +396,16 @@ const DB = (() => {
         Fecha,
         US_DNI,
         Clase_ID: String(Clase_ID),
+        // Si hay datos de tercero los guardamos; en caso contrario null
+        Tercero: tercero
+          ? {
+              Nombre:   tercero.Nombre.trim(),
+              Edad:     Number(tercero.Edad),
+              Telefono: tercero.Telefono.trim(),
+              Alergias: tercero.Alergias.trim() || 'Ninguna',
+              DNI:      tercero.DNI ? tercero.DNI.trim().toUpperCase() : null,
+            }
+          : null,
       };
       const ref = await db.collection('Reserva').add(nueva);
       return { ok: true, reserva: { id: ref.id, ...nueva } };

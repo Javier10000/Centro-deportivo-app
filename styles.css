@@ -1043,3 +1043,89 @@ code { font-family: monospace; background: var(--clr-surface2); padding: 2px 6px
 .horarios-tabla-wrap {
   /* wrapper para la página pública */
 }
+/* ============================================================
+   PANEL TERCERO — Reserva para otra persona
+   ============================================================ */
+
+.panel-tercero {
+  margin-top: 1.25rem;
+  background: var(--clr-surface2);
+  border: 1px solid rgba(232, 255, 71, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  animation: fadeInDown 0.22s ease;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.panel-tercero-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.panel-tercero-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.panel-tercero-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--clr-accent);
+  text-transform: uppercase;
+  margin-bottom: 0.15rem;
+}
+
+.panel-tercero-sub {
+  font-size: 13px;
+  color: var(--clr-muted);
+}
+
+.panel-tercero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+/* Asterisco campo obligatorio */
+.field-required {
+  color: var(--clr-accent2);
+  font-size: 12px;
+  margin-left: 2px;
+}
+
+/* Etiqueta "opcional" */
+.field-optional {
+  color: var(--clr-muted);
+  font-size: 11px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+/* Badge de invitado en la tarjeta de reserva */
+.reserva-tercero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(232, 255, 71, 0.1);
+  border: 1px solid rgba(232, 255, 71, 0.25);
+  color: var(--clr-accent);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .panel-tercero-grid { grid-template-columns: 1fr; }
+}

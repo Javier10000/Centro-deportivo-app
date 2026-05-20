@@ -203,11 +203,52 @@
             </select>
           </div>
           <div class="field" style="flex:1">
-            <label>Fecha</label>
+            <label>Fecha de inicio de contrato</label>
             <input type="date" id="reserva-fecha" />
+          </div>
+          <div class="field" style="flex:1">
+            <label>Reservar para</label>
+            <select id="reserva-titular">
+              <option value="yo">👤 Yo mismo</option>
+              <option value="tercero">🧑‍🤝‍🧑 Otra persona</option>
+            </select>
           </div>
           <button id="btn-hacer-reserva" class="btn-primary" style="align-self:flex-end">Reservar clase</button>
         </div>
+
+        <!-- Panel datos del invitado (visible sólo al elegir "Otra persona") -->
+        <div id="panel-tercero" class="panel-tercero hidden">
+          <div class="panel-tercero-header">
+            <span class="panel-tercero-icon">🧑‍🤝‍🧑</span>
+            <div>
+              <h4 class="panel-tercero-title">Datos del invitado</h4>
+              <p class="panel-tercero-sub">Rellena los datos de la persona que asistirá a la clase</p>
+            </div>
+          </div>
+          <div class="panel-tercero-grid">
+            <div class="field">
+              <label>Nombre completo <span class="field-required">*</span></label>
+              <input type="text" id="tercero-nombre" placeholder="Ana García López" />
+            </div>
+            <div class="field">
+              <label>Edad <span class="field-required">*</span></label>
+              <input type="number" id="tercero-edad" placeholder="25" min="1" max="120" />
+            </div>
+            <div class="field">
+              <label>Teléfono de contacto <span class="field-required">*</span></label>
+              <input type="tel" id="tercero-telefono" placeholder="+34 600 000 000" />
+            </div>
+            <div class="field">
+              <label>Alergias o condiciones médicas <span class="field-required">*</span></label>
+              <input type="text" id="tercero-alergias" placeholder="Ninguna / Polen / Látex…" />
+            </div>
+            <div class="field">
+              <label>DNI <span class="field-optional">(opcional)</span></label>
+              <input type="text" id="tercero-dni" placeholder="12345678A" maxlength="9" />
+            </div>
+          </div>
+        </div>
+
         <div id="reserva-msg" class="msg-error hidden"></div>
         <div id="reserva-ok" class="msg-success hidden"></div>
 

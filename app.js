@@ -171,16 +171,24 @@ async function renderDashboard() {
 }
 
 function reservaItemHTML(r) {
-  const cfg = DEPORTES_CONFIG[r.Deporte] || {};
+  const cfg   = DEPORTES_CONFIG[r.Deporte] || {};
   const color = r.DeporteColor || cfg.color || '#fff';
-  const icon = r.DeporteIcono || cfg.icon || '🏅';
+  const icon  = r.DeporteIcono || cfg.icon  || '🏅';
   const label = r.DeporteNombre || cfg.label || r.Deporte;
+
+  const terceroBadge = r.Tercero
+    ? `<span class="reserva-tercero-badge" title="Alergias: ${r.Tercero.Alergias} · Tel: ${r.Tercero.Telefono}">
+         👤 ${r.Tercero.Nombre} (${r.Tercero.Edad} años)
+       </span>`
+    : '';
+
   return `
     <div class="reserva-item">
       <span class="reserva-sport-dot" style="background:${color}"></span>
       <div class="reserva-info">
         <div class="reserva-title">${icon} ${label} — ${r.Descripcion}</div>
         <div class="reserva-detail">Prof. ${r.ProfesorNombre} · ${r.Pista} · ${r.Horario}</div>
+        ${terceroBadge}
       </div>
       <div class="reserva-date">${formatFechaSola(r.Fecha)}</div>
       <button class="btn-cancelar-reserva" data-id="${r.id}" title="Cancelar reserva">Cancelar</button>
@@ -268,6 +276,36 @@ async function renderPaginaReservas() {
   document.getElementById('reserva-fecha').min = hoy;
   document.getElementById('reserva-fecha').value = hoy;
 
+  // ---- Selector de titular (yo / tercero) ----
+  const selectTitular = document.getElementById('reserva-titular');
+  const panelTercero  = document.getElementById('panel-tercero');
+
+  // Clonar para limpiar listeners previos
+  const nuevoSelectTitular = selectTitular.cloneNode(true);
+  selectTitular.parentNode.replaceChild(nuevoSelectTitular, selectTitular);
+  // Panel siempre oculto al entrar en la página
+  toggle(panelTercero, false);
+  nuevoSelectTitular.value = 'yo';
+
+  nuevoSelectTitular.addEventListener('change', () => {
+    const esTercero = nuevoSelectTitular.value === 'tercero';
+    toggle(panelTercero, esTercero);
+    // Limpia los campos al ocultar el panel y recarga las clases con la edad del usuario
+    if (!esTercero) {
+      ['tercero-nombre', 'tercero-edad', 'tercero-telefono', 'tercero-alergias', 'tercero-dni']
+        .forEach(id => { document.getElementById(id).value = ''; });
+    }
+    // Refrescar clases según quién es el titular (usuario o tercero sin edad aún)
+    nuevoSelect.dispatchEvent(new Event('change'));
+  });
+
+  // Cuando cambia la edad del tercero, recalcular las clases disponibles para su categoría
+  document.getElementById('tercero-edad').addEventListener('input', () => {
+    if (nuevoSelectTitular.value === 'tercero' && nuevoSelect.value) {
+      nuevoSelect.dispatchEvent(new Event('change'));
+    }
+  });
+
   const nuevoSelect = selectDeporte.cloneNode(true);
   selectDeporte.parentNode.replaceChild(nuevoSelect, selectDeporte);
 
@@ -290,12 +328,23 @@ async function renderPaginaReservas() {
       return;
     }
 
-    // --- Calcular edad del usuario ---
-    const fnac = new Date(usuario.F_Nacimiento);
-    const hoyDate = new Date();
-    let edadUsuario = hoyDate.getFullYear() - fnac.getFullYear();
-    const mesD = hoyDate.getMonth() - fnac.getMonth();
-    if (mesD < 0 || (mesD === 0 && hoyDate.getDate() < fnac.getDate())) edadUsuario--;
+    // --- Determinar la edad a usar para filtrar categorías ---
+    // Si el titular es un tercero y ya introdujo su edad, se usa esa; si no, la del usuario
+    const esTercero = document.getElementById('reserva-titular').value === 'tercero';
+    const edadTerceroInput = Number(document.getElementById('tercero-edad').value);
+    const usarEdadTercero = esTercero && edadTerceroInput >= 1 && edadTerceroInput <= 120;
+
+    let edadReferencia;
+    if (usarEdadTercero) {
+      edadReferencia = edadTerceroInput;
+    } else {
+      const fnac = new Date(usuario.F_Nacimiento);
+      const hoyDate = new Date();
+      let edadUsuario = hoyDate.getFullYear() - fnac.getFullYear();
+      const mesD = hoyDate.getMonth() - fnac.getMonth();
+      if (mesD < 0 || (mesD === 0 && hoyDate.getDate() < fnac.getDate())) edadUsuario--;
+      edadReferencia = edadUsuario;
+    }
 
     // --- Buscar categorías: primero específicas del deporte, si no hay usar globales ---
     const todasCats = await DB.Categoria.listarTodas();
@@ -304,24 +353,29 @@ async function renderPaginaReservas() {
       categoriasDeporte = todasCats.filter(c => !c.Deporte || c.Deporte === '');
     }
 
-    // --- Categoría que corresponde al usuario ---
-    const categoriaUsuario = categoriasDeporte.find(
-      cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax
+    // --- Categoría que corresponde a la edad de referencia ---
+    const categoriaRef = categoriasDeporte.find(
+      cat => edadReferencia >= cat.EdadMin && edadReferencia <= cat.EdadMax
     );
 
-    // --- Filtrar clases por categoría del usuario ---
+    // Texto orientativo para mensajes de error
+    const quienLabel = usarEdadTercero
+      ? `el invitado (${edadReferencia} años)`
+      : `tu edad (${edadReferencia} años)`;
+
+    // --- Filtrar clases por categoría ---
     const clasesFiltradas = categoriasDeporte.length === 0
       ? clases  // sin categorías definidas → mostrar todas
       : clases.filter(c => {
           if (!c.Categoria) return false;
-          if (!categoriaUsuario) return false;
-          return c.Categoria === categoriaUsuario.id;
+          if (!categoriaRef) return false;
+          return c.Categoria === categoriaRef.id;
         });
 
     if (clasesFiltradas.length === 0) {
-      selectClase.innerHTML = categoriaUsuario
-        ? `<option value="">Sin clases para tu categoría (${categoriaUsuario.Nombre}, ${edadUsuario} años)</option>`
-        : `<option value="">No hay categoría para tu edad (${edadUsuario} años)</option>`;
+      selectClase.innerHTML = categoriaRef
+        ? `<option value="">Sin clases para la categoría ${categoriaRef.Nombre} (${edadReferencia} años)</option>`
+        : `<option value="">No hay categoría para ${quienLabel}</option>`;
       return;
     }
 
@@ -353,23 +407,27 @@ async function renderPaginaReservas() {
   await renderHistorialReservas();
 }
 
+/**
+ * Función que valida y crea una reserva de la clase.
+ * Soporta reservas para el propio usuario o para una tercera persona.
+ */
 async function hacerReserva() {
   const usuario = await Auth.usuarioActual();
   const deporteEl = document.getElementById('reserva-deporte');
-  const claseEl = document.getElementById('reserva-clase');
-  const fechaEl = document.getElementById('reserva-fecha');
-  const msgErr = document.getElementById('reserva-msg');
-  const msgOk = document.getElementById('reserva-ok');
+  const claseEl   = document.getElementById('reserva-clase');
+  const fechaEl   = document.getElementById('reserva-fecha');
+  const msgErr    = document.getElementById('reserva-msg');
+  const msgOk     = document.getElementById('reserva-ok');
 
   toggle(msgErr, false);
   toggle(msgOk, false);
 
   const Clase_ID = claseEl.value;
-  const Fecha = fechaEl.value;
+  const Fecha    = fechaEl.value;
 
   if (!deporteEl.value) { msgErr.textContent = 'Selecciona un deporte.'; toggle(msgErr, true); return; }
-  if (!Clase_ID) { msgErr.textContent = 'Selecciona una clase.'; toggle(msgErr, true); return; }
-  if (!Fecha) { msgErr.textContent = 'Selecciona una fecha.'; toggle(msgErr, true); return; }
+  if (!Clase_ID)        { msgErr.textContent = 'Selecciona una clase.';  toggle(msgErr, true); return; }
+  if (!Fecha)           { msgErr.textContent = 'Selecciona una fecha.';  toggle(msgErr, true); return; }
 
   const diaSemana = new Date(Fecha + 'T12:00:00').getDay();
   if (diaSemana === 0 || diaSemana === 6) {
@@ -377,7 +435,48 @@ async function hacerReserva() {
     toggle(msgErr, true); return;
   }
 
-  const resultado = await DB.Reserva.crear({ US_DNI: usuario.US_DNI, Clase_ID, Fecha });
+  // ---- Datos del tercero ----
+  const esTercero = document.getElementById('reserva-titular').value === 'tercero';
+  let tercero = null;
+
+  if (esTercero) {
+    const tNombre   = document.getElementById('tercero-nombre').value.trim();
+    const tEdad     = document.getElementById('tercero-edad').value.trim();
+    const tTelefono = document.getElementById('tercero-telefono').value.trim();
+    const tAlergias = document.getElementById('tercero-alergias').value.trim();
+    const tDNI      = document.getElementById('tercero-dni').value.trim();
+
+    if (!tNombre || tNombre.length < 3) {
+      msgErr.textContent = 'El nombre del invitado debe tener al menos 3 caracteres.';
+      toggle(msgErr, true); return;
+    }
+    if (!tEdad || isNaN(tEdad) || Number(tEdad) < 1 || Number(tEdad) > 120) {
+      msgErr.textContent = 'Introduce una edad válida para el invitado (1-120).';
+      toggle(msgErr, true); return;
+    }
+    if (!tTelefono || !/^\+?[\d\s\-]{7,15}$/.test(tTelefono)) {
+      msgErr.textContent = 'Introduce un número de teléfono válido para el invitado.';
+      toggle(msgErr, true); return;
+    }
+    if (!tAlergias) {
+      msgErr.textContent = 'Indica las alergias del invitado (escribe "Ninguna" si no tiene).';
+      toggle(msgErr, true); return;
+    }
+    if (tDNI && !/^[0-9]{8}[A-Za-z]$/.test(tDNI)) {
+      msgErr.textContent = 'El DNI del invitado no tiene un formato válido (ej: 12345678A).';
+      toggle(msgErr, true); return;
+    }
+
+    tercero = {
+      Nombre:   tNombre,
+      Edad:     tEdad,
+      Telefono: tTelefono,
+      Alergias: tAlergias,
+      DNI:      tDNI || null,
+    };
+  }
+
+  const resultado = await DB.Reserva.crear({ US_DNI: usuario.US_DNI, Clase_ID, Fecha, tercero });
 
   if (!resultado.ok) {
     msgErr.textContent = resultado.error;
@@ -385,7 +484,8 @@ async function hacerReserva() {
     return;
   }
 
-  msgOk.textContent = `¡Reserva realizada correctamente para el ${formatFechaSola(Fecha)}!`;
+  const para = esTercero ? ` para ${tercero.Nombre}` : '';
+  msgOk.textContent = `¡Reserva realizada correctamente${para} para el ${formatFechaSola(Fecha)}!`;
   toggle(msgOk, true);
   await renderHistorialReservas();
 
