@@ -3,6 +3,8 @@
  * Gestiona: navegación, dashboard, deportes, reservas, suscripciones y panel admin.
 <<<<<<< HEAD
  * Prueba jose manuel
+javier hace un push
+
 =======
 >>>>>>> 8756bf6a5a7efc68ce728732a574fdd065431c39
  */
