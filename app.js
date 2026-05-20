@@ -315,10 +315,10 @@ async function renderPaginaReservas() {
     selectClase.innerHTML = '';
 
     if (!deporte) {
-      selectClase.innerHTML = '<option value="">— Primero selecciona deporte —</option>';
-      const fi = document.getElementById('reserva-fecha');
-      fi.min = new Date().toISOString().split('T')[0];
-      fi.max = '';
+
+
+
+
       return;
     }
 
@@ -391,11 +391,8 @@ async function renderPaginaReservas() {
     if (sub) {
       const hoyStr = new Date().toISOString().split('T')[0];
       const fechaInput = document.getElementById('reserva-fecha');
-      fechaInput.min = sub.Fecha_Inicio > hoyStr ? sub.Fecha_Inicio : hoyStr;
-      fechaInput.max = sub.Fecha_Fin;
-      if (fechaInput.value < fechaInput.min || fechaInput.value > sub.Fecha_Fin) {
-        fechaInput.value = fechaInput.min;
-      }
+      const fechaMin = sub.Fecha_Inicio > hoyStr ? sub.Fecha_Inicio : hoyStr;
+      fechaInput.value = fechaMin;
     }
   });
 
