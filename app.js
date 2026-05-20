@@ -1,13 +1,9 @@
 /**
- * app.js — Controlador principal de la aplicación
- * Gestiona: navegación, dashboard, deportes, reservas, suscripciones y panel admin.
-<<<<<<< HEAD
- * Prueba jose manuel
-javier hace un push
-hola soy josema
-
-=======
->>>>>>> 8756bf6a5a7efc68ce728732a574fdd065431c39
+ primero un git pull para descargar los cambios 
+Actualizar los cambios: 
+git add .
+git commit -m "Añadida la validación de usuarios en app.js y estilos nuevos"
+git push
  */
 
 /* ============================================================
