@@ -199,6 +199,7 @@ async function renderDashboard() {
       deportesList.map(key => DB.Subscricion.tieneActiva(usuario.US_DNI, key))
     );
 
+    //Construimos el html del dashboard de deportes mostrando sus mensajes
     dashDeportes.innerHTML = deportesList.map((key, i) => {
       const cfg = DEPORTES_CONFIG[key];
       const activo = activosPorDeporte[i];
@@ -220,19 +221,26 @@ async function renderDashboard() {
     a.addEventListener('click', (e) => { e.preventDefault(); navegarA(a.dataset.page); });
   });
 }
-
+/**
+ * Genera el HTML correspondiente a una reserva individual
+ * @param {Object} r - Objeto de reserva con toda la información necesaria.
+ * @returns {string} HTML listo para insertar en el DOM.
+ */
 function reservaItemHTML(r) {
+  //Datos de la tarjeta
   const cfg = DEPORTES_CONFIG[r.Deporte] || {};
   const color = r.DeporteColor || cfg.color || '#fff';
   const icon = r.DeporteIcono || cfg.icon || '🏅';
   const label = r.DeporteNombre || cfg.label || r.Deporte;
 
+ // Si la reserva incluye un tercero (hijo, familiar, amigo), generamos un badge adicional para rellenar los datos
+  
   const terceroBadge = r.Tercero
     ? `<span class="reserva-tercero-badge" title="Alergias: ${r.Tercero.Alergias} · Tel: ${r.Tercero.Telefono}">
          👤 ${r.Tercero.Nombre} (${r.Tercero.Edad} años)
        </span>`
     : '';
-
+//HTML listo para insertar en el DOM.
   return `
     <div class="reserva-item">
       <span class="reserva-sport-dot" style="background:${color}"></span>
@@ -249,21 +257,26 @@ function reservaItemHTML(r) {
 /* ============================================================
    DEPORTES (vista pública)
    ============================================================ */
-
+/**
+ * Renderiza la vista completa de deportes en la pagina principal
+ * @returns {Promise<void>} No devuelve valor; actualiza el DOM directamente.
+ */
 async function renderDeportes() {
+
   const grid = document.getElementById('deportes-grid');
   const profesores = await DB.Profesor.listarTodos();
   const clases = await DB.Clases.listarTodas();
-
+   // Si no hay deportes configurados en DEPORTES_CONFIG,  
   if (Object.keys(DEPORTES_CONFIG).length === 0) {
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No hay deportes configurados todavía.</div>';
     return;
   }
-
+// Recorremos cada deporte configurado y se genera su tarjeta con todos sus datos
   grid.innerHTML = Object.entries(DEPORTES_CONFIG).map(([key, cfg]) => {
+    //Filtrar profesores y clases de cada deporte
     const profs = profesores.filter(p => p.Especialidad === key);
     const clasesDeporte = clases.filter(c => c.Deporte === key);
-
+//Construccion de cada html para profesores 
     const profesoresHTML = profs.map(prof => {
       const clase = clasesDeporte.find(c => c.PRO_DNI === prof.PRO_DNI);
       return `
@@ -276,7 +289,7 @@ async function renderDeportes() {
           ${clase ? `<span class="horario-tag">${clase.Horario.split(' ')[1] || ''}</span>` : ''}
         </div>`;
     }).join('');
-
+//De cada deporte
     return `
       <div class="deporte-card-full">
         <div class="deporte-card-header">
@@ -591,15 +604,21 @@ let _cancelarSubId = null;
 /* ============================================================
    HORARIOS
    ============================================================ */
-
+//Creación de array con los dias de la semana
 const DIAS_SEMANA = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
-
+/**
+ * Renderizado completo de los horarios
+ */
 async function renderHorarios() {
+  //Carga de configuración de los deportes
   await cargarDeportesConfig();
+  //Obencion de usuario actual, todas las clases de la base de datos
   const usuario = await Auth.usuarioActual();
   const todasClases = await DB.Clases.listarTodas();
+  //Recoger el array con todas los deportes de la base de datos y convertirlos en una lista clave valor
   const deportesList = Object.entries(DEPORTES_CONFIG);
 
+  //Creación de elementos para insertar filtros y tabla de horarios
   const filtrosEl = document.getElementById('horarios-filtros');
   const tablaEl = document.getElementById('horarios-tabla');
 
@@ -612,8 +631,13 @@ async function renderHorarios() {
         ${deportesList.map(([key, cfg]) => `<option value="${key}">${cfg.icon} ${cfg.label}</option>`).join('')}
       </select>
     </div>`;
-
+/**
+ * Renderiza la tabla de horarios según el deporte seleccionado.
+ * @param {string} filtroDeporte - Clave del deporte a filtrar; si está vacío, muestra todos.
+ * @returns {Promise<void>} No devuelve valor; actualiza el DOM directamente.
+ */
   const renderTabla = async (filtroDeporte) => {
+    //Si hay filtro se muestra solo las clases del deporte seleccionado
     const clases = filtroDeporte
       ? todasClases.filter(c => c.Deporte === filtroDeporte)
       : todasClases;
@@ -625,7 +649,7 @@ async function renderHorarios() {
       if (match) horasSet.add(match[0]);
     });
     const horas = [...horasSet].sort();
-
+//Si no hay clases se muestra el array y ordenamos las horas
     if (clases.length === 0) {
       tablaEl.innerHTML = '<div class="empty-state">No hay clases para mostrar.</div>';
       return;
@@ -634,7 +658,7 @@ async function renderHorarios() {
     // Construir mapa dia->hora->clases
     const mapa = {};
     DIAS_SEMANA.forEach(d => { mapa[d] = {}; horas.forEach(h => { mapa[d][h] = []; }); });
-
+//Rellenamos el horario
     for (const c of clases) {
       const cfg = DEPORTES_CONFIG[c.Deporte] || {};
       const prof = c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null;
@@ -683,7 +707,7 @@ async function renderHorarios() {
         </table>
       </div>`;
   };
-
+//Inicialización sin filtros
   await renderTabla('');
 
   document.getElementById('horario-filtro-deporte').addEventListener('change', async (e) => {
