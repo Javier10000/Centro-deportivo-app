@@ -46,7 +46,7 @@ const DB = (() => {
       if (snap.empty) return null;
       return snap.docs[0].data();
     },
-
+    //Esta funcion sirve para buscar a un usuario y recoger todos sus datos por el correo 
     async buscarPorDNI(dni) {
       const snap = await db.collection('Usuario').doc(dni).get();
       return snap.exists ? snap.data() : null;
@@ -58,9 +58,7 @@ const DB = (() => {
     },
   };
 
-  /* ============================================================
-     TABLA: Subscricion
-     ============================================================ */
+  /* Esta primera función sirve para inicializar una subcripción y comprobar a q deportes esta suscrito el usuario*/
   const Subscricion = {
     async crear({ US_DNI, Modalidad, Deporte }) {
       const existente = await db.collection('Subscricion')
@@ -85,7 +83,7 @@ const DB = (() => {
         const fin = new Date(hoy); fin.setFullYear(fin.getFullYear() + 1);
         fechaFin = fin.toISOString().split('T')[0];
       }
-
+      //COMPRUEBA SI LA SUBCRIPCION ESTA ACTIVA
       const ref = await db.collection('Subscricion').add({
         Modalidad, Estado: 'activa',
         Fecha_Inicio: fechaInicio,
@@ -94,7 +92,7 @@ const DB = (() => {
       });
       return { ok: true, suscripcion: { id: ref.id, Modalidad, Estado: 'activa', Fecha_Inicio: fechaInicio, Fecha_Fin: fechaFin, US_DNI, Deporte } };
     },
-
+    //Comprueba si la subcripcion esta activa o no para desactivarla
     async cancelar(id, US_DNI) {
       const ref = db.collection('Subscricion').doc(id);
       const snap = await ref.get();
@@ -103,13 +101,13 @@ const DB = (() => {
       await ref.update({ Estado: 'inactiva' });
       return { ok: true };
     },
-
+    //Recoge los datos de todos los usuarios suscritos a un deporte
     async listarPorUsuario(US_DNI) {
       const snap = await db.collection('Subscricion')
         .where('US_DNI', '==', US_DNI).get();
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     },
-
+    //Comprueba si el usuario esta activa 
     async tieneActiva(US_DNI, Deporte) {
       const hoy = new Date().toISOString().split('T')[0];
       const snap = await db.collection('Subscricion')
@@ -119,7 +117,7 @@ const DB = (() => {
         .get();
       return snap.docs.some(d => d.data().Fecha_Fin >= hoy);
     },
-
+    //Obtiene si la subscripcion tiene activa
     async obtenerActiva(US_DNI, Deporte) {
       const hoy = new Date().toISOString().split('T')[0];
       const snap = await db.collection('Subscricion')
