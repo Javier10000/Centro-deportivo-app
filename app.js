@@ -54,7 +54,7 @@ function toggle(el, mostrar) {
  * @param {boolean} mostrar - Indica si el elemento debe mostrarse (true) u ocultarse (false).
  */
 function mostrarToast(mensaje, tipo = 'success') {
-  //Obtencion del elemento
+  //Obtencion del 
   let toast = document.getElementById('app-toast');
   if (!toast) {
     toast = document.createElement('div');
