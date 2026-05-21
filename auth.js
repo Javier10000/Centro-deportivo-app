@@ -1,9 +1,7 @@
 /**
  * auth.js — Sistema de autenticación con Firebase Authentication
  */
-/**
- * mario se a guardado 
- */
+
 const Auth = (() => {
   const auth = firebase.auth();
 
