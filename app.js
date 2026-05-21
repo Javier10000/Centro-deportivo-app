@@ -1,6 +1,5 @@
 /**
-
- primero un git pull para descargar los cambios 
+primero un git pull para descargar los cambios 
 Actualizar los cambios: 
 git add .
 git commit -m "Añadida la validación de usuarios en app.js y estilos nuevos"
@@ -9,8 +8,9 @@ git push
  */
 
 /* ============================================================
-   UTILIDADES mm
+   UTILIDADES
    ============================================================ */
+
 
 function formatFecha(iso) {
   if (!iso) return '—';
