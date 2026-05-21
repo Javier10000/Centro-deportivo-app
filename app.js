@@ -11,38 +11,64 @@ git push
    UTILIDADES
    ============================================================ */
 
-
+/**
+ * Formatea una fecha en formato ISO (por ejemplo: "2026-05-21") y la convierte a un formato de dd/mm/yyyy h m.
+ * @param {string} iso - Cadena con una fecha en formato ISO.
+ * @returns {string} - Fecha formateada o '—' si no se proporciona fecha.
+ */
 function formatFecha(iso) {
+  //Recoge la fecha si no es nula y la devuelve formateada con fecha y hora
   if (!iso) return '—';
   const d = new Date(iso);
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-
+/**
+ * Formatea una fecha en formato ISO (por ejemplo: "2026-05-21") y la convierte a un formato de dd/mm/yyyy.
+ * @param {string} isoDate - Cadena con una fecha en formato ISO.
+ * @returns {string} - Fecha formateada o '—' si no se proporciona fecha.
+ */
 function formatFechaSola(isoDate) {
+    //Recoge la fecha si no es nula y la devuelve formateada solo con fecha
   if (!isoDate) return '—';
   const [y, m, d] = isoDate.split('-');
   return `${d}/${m}/${y}`;
 }
-
+/**
+ * Genera las iniciales a partir de un nombre completo.
+ * @param {string} nombre - Nombre completo del usuario.
+ * @returns {string} - Iniciales en mayúsculas o '?' si no hay nombre.
+ */
 function iniciales(nombre) {
+  //modifica la cadena solo cogiendo con trim las iniciales
   if (!nombre) return '?';
   return nombre.trim().split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
 }
-
+/**
+ * 
+ * @param {*} el 
+ * @param {*} mostrar 
+ */
 function toggle(el, mostrar) {
   if (mostrar) el.classList.remove('hidden');
   else el.classList.add('hidden');
 }
-
+/**
+ * Muestra u oculta un elemento del DOM añadiendo o quitando la clase 'hidden'.
+ * @param {HTMLElement} el - Elemento del DOM que queremos mostrar u ocultar.
+ * @param {boolean} mostrar - Si es true se muestra; si es false se oculta.
+ */
 function mostrarToast(mensaje, tipo = 'success') {
+  //Recoge o crea una capa div para aplicar a todo el contexto para aplicar la clase hidden
   let toast = document.getElementById('app-toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'app-toast';
     document.body.appendChild(toast);
   }
+
   toast.textContent = mensaje;
   toast.className = `app-toast app-toast--${tipo} app-toast--visible`;
+  //Muestra u oculta el html tras 3 segundos
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => {
     toast.classList.remove('app-toast--visible');
@@ -52,12 +78,18 @@ function mostrarToast(mensaje, tipo = 'success') {
 /* ============================================================
    DEPORTES CONFIG (cargado desde Firestore)
    ============================================================ */
-
+//Array con todos los deportes guardados en la base de datos
 let DEPORTES_CONFIG = {};
-
+/**
+ * Carga la configuración de todos los deportes desde la base de datos
+ * @returns {Promise<Array>} - Lista de deportes obtenidos desde la BD.
+ */
 async function cargarDeportesConfig() {
+  //REcoge los deportes de la base de datos
   const deportes = await DB.Deporte.listarTodos();
+
   DEPORTES_CONFIG = {};
+  //Añade los deportes al array
   deportes.forEach(d => {
     DEPORTES_CONFIG[d.id] = {
       label: d.Nombre,
@@ -72,14 +104,19 @@ async function cargarDeportesConfig() {
 /* ============================================================
    NAVEGACIÓN
    ============================================================ */
-
+//Array con todas las paginas disponibles en la web
 const PAGINAS = ['dashboard', 'deportes', 'reservas', 'horarios', 'suscripciones', 'admin'];
-
+/**
+ * Navega a una página específica de la aplicación 
+ * @param {string} pagina - Nombre de la página a mostrar (dashboard, deportes, reservas, etc.)
+ */
 async function navegarA(pagina) {
+  //Oculta todas las paginas de la web añadiendo la clase hidden a todas ellas
   PAGINAS.forEach(p => {
     const el = document.getElementById(`page-${p}`);
     if (el) el.classList.add('hidden');
   });
+
   const target = document.getElementById(`page-${pagina}`);
   if (target) target.classList.remove('hidden');
 
