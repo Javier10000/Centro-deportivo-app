@@ -44,16 +44,17 @@ function iniciales(nombre) {
   return nombre.trim().split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
 }
 /**
- * 
- * @param {*} el 
- * @param {*} mostrar 
+ * Muestra u oculta un elemento del DOM añadiendo o quitando la clase 'hidden'.
+ * Se usa para controlar la visibilidad de secciones/páginas en la aplicación.
+ * @param {HTMLElement} el - Elemento del DOM que queremos mostrar u ocultar.
+ * @param {boolean} mostrar - Si es true se muestra; si es false se oculta.
  */
 function toggle(el, mostrar) {
   if (mostrar) el.classList.remove('hidden');
   else el.classList.add('hidden');
 }
 /**
- * Muestra u oculta un elemento del DOM añadiendo o quitando la clase 'hidden'.
+ * Muestra elemento del DOM quitando la clase 'hidden'.
  * @param {HTMLElement} el - Elemento del DOM que queremos mostrar u ocultar.
  * @param {boolean} mostrar - Si es true se muestra; si es false se oculta.
  */
@@ -116,16 +117,16 @@ async function navegarA(pagina) {
     const el = document.getElementById(`page-${p}`);
     if (el) el.classList.add('hidden');
   });
-
+//elimina hidden de la pagina a mostrar
   const target = document.getElementById(`page-${pagina}`);
   if (target) target.classList.remove('hidden');
-
+//Recorre y activa solo la pagina seleccionada
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.toggle('active', link.dataset.page === pagina);
   });
-
+//Recoge los deportes para que se refleje tanto en la web como en la base de datos los deportes
   await cargarDeportesConfig();
-
+//Renderiza la pagina seleccionada
   switch (pagina) {
     case 'dashboard': await renderDashboard(); break;
     case 'deportes': await renderDeportes(); break;
@@ -135,7 +136,7 @@ async function navegarA(pagina) {
     case 'admin': await renderAdmin(); break;
   }
 }
-
+//Recorremos todos los objetos que contengan el selector nav-link y les añade un boton a la espera del evento
 document.querySelectorAll('.nav-link').forEach(link => {
   link.addEventListener('click', (e) => {
     e.preventDefault();
@@ -146,23 +147,28 @@ document.querySelectorAll('.nav-link').forEach(link => {
 /* ============================================================
    DASHBOARD
    ============================================================ */
-
+/**
+ * Renderiza el panel principal (dashboard) del usuario y muestra los datos 
+ */
 async function renderDashboard() {
+  //Obtiene le usuario autenticado si no existe sale de la funcion
   const usuario = await Auth.usuarioActual();
   if (!usuario) return;
 
+  //Recoge el nombre para mostrar un saludo al iniciar la sesion
   const primerNombre = usuario.Nombre.split(' ')[0];
   document.getElementById('hero-user-name').textContent = primerNombre;
-
+  //Obtenemos todas las suscripciones y las filtramos por activas junto a sus reservas
   const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
   const subsActivas = subs.filter(s => s.Estado === 'activa').length;
   const reservas = await DB.Reserva.listarPorUsuario(usuario.US_DNI);
-
+//Muestra dentro de la pagina dashboards los datos
   document.getElementById('stat-subs').textContent = subsActivas;
   document.getElementById('stat-reservas').textContent = reservas.length;
 
-  // Próximas reservas
+//Recoge las proximas clases
   const containerReservas = document.getElementById('dashboard-reservas');
+  //Filtra solo las activas, en caso de no existir ninguna genera un html y lo inserta en index
   const proximas = reservas
     .filter(r => new Date(r.Fecha_Inicio) >= new Date())
     .slice(0, 4);
@@ -170,6 +176,7 @@ async function renderDashboard() {
   if (proximas.length === 0) {
     containerReservas.innerHTML = `<div class="empty-state">No tienes clases próximas reservadas. <a href="#" data-page="reservas" class="nav-link-inline">Reservar ahora →</a></div>`;
   } else {
+    //Muestra las activas
     containerReservas.innerHTML = proximas.map(r => reservaItemHTML(r)).join('');
     containerReservas.querySelectorAll('.btn-cancelar-reserva').forEach(btn => {
       btn.addEventListener('click', () => cancelarReserva(btn.dataset.id));
@@ -179,10 +186,12 @@ async function renderDashboard() {
   // Tarjetas de deportes
   const dashDeportes = document.getElementById('dash-deportes');
   const deportesList = Object.keys(DEPORTES_CONFIG);
-
+  //Si no existen los deportes se genera un html 
   if (deportesList.length === 0) {
+    //Construye cada tarjeta de deporte disponible
     dashDeportes.innerHTML = '<div class="empty-state">No hay deportes configurados todavía.</div>';
   } else {
+//Obtenemos todas las clases disponibles por deportes y si tiene suscripcion activa para el mismo
     const clasesPorDeporte = await Promise.all(
       deportesList.map(key => DB.Clases.listarPorDeporte(key))
     );
