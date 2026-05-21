@@ -18,9 +18,9 @@ const DB = (() => {
     console.log('✅ Meta inicializada');
   }
 
-  /* ============================================================
-     TABLA: Usuario
-     ============================================================ */
+  /* 
+    Esta funcion es para controlar que no se puedan crear usuarios con el mismo DNI ni con el mismo correo 
+  */
   const Usuario = {
     async insertar({ US_DNI, Nombre, Correo, F_Nacimiento }) {
       const porDNI = await db.collection('Usuario').doc(US_DNI).get();
@@ -39,7 +39,7 @@ const DB = (() => {
       });
       return { ok: true };
     },
-
+    //Esta funcion sirve para buscar a un usuario y recoger todos sus datos por el correo 
     async buscarPorCorreo(correo) {
       const snap = await db.collection('Usuario')
         .where('Correo', '==', correo.toLowerCase()).get();
