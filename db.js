@@ -1,6 +1,10 @@
 const DB = (() => {
 
   const db = firebase.firestore();
+/**
+ * javier
+ */ 
+
 
   /**
    * Inicializa solo el documento centinela si no existe.
