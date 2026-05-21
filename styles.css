@@ -1040,6 +1040,9 @@ code { font-family: monospace; background: var(--clr-surface2); padding: 2px 6px
   align-self: flex-start;
 }
 
+.horarios-tabla-wrap {
+  /* wrapper para la página pública */
+}
 /* ============================================================
    PANEL TERCERO — Reserva para otra persona
    ============================================================ */
