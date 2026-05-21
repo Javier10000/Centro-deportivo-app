@@ -19,8 +19,7 @@ function formatFechaSola(isoDate) {
   return `${d}/${m}/${y}`;
 }
 
-
- toma lacasitos
+//Comentario
 
 function iniciales(nombre) {
   if (!nombre) return '?';
