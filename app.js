@@ -1,6 +1,5 @@
 /**
-
- primero un git pull para descargar los cambios 
+primero un git pull para descargar los cambios 
 Actualizar los cambios: 
 git add .
 git commit -m "Añadida la validación de usuarios en app.js y estilos nuevos"
@@ -12,37 +11,65 @@ git push
    UTILIDADES
    ============================================================ */
 
+/**
+ * Formatea una fecha en formato ISO (por ejemplo: "2026-05-21") y la convierte a un formato de dd/mm/yyyy h m.
+ * @param {string} iso - Cadena con una fecha en formato ISO.
+ * @returns {string} - Fecha formateada o '—' si no se proporciona fecha.
+ */
 function formatFecha(iso) {
+  //Recoge la fecha si no es nula y la devuelve formateada con fecha y hora
   if (!iso) return '—';
   const d = new Date(iso);
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-
+/**
+ * Formatea una fecha en formato ISO (por ejemplo: "2026-05-21") y la convierte a un formato de dd/mm/yyyy.
+ * @param {string} isoDate - Cadena con una fecha en formato ISO.
+ * @returns {string} - Fecha formateada o '—' si no se proporciona fecha.
+ */
 function formatFechaSola(isoDate) {
+    //Recoge la fecha si no es nula y la devuelve formateada solo con fecha
   if (!isoDate) return '—';
   const [y, m, d] = isoDate.split('-');
   return `${d}/${m}/${y}`;
 }
-
+/**
+ * Genera las iniciales a partir de un nombre completo.
+ * @param {string} nombre - Nombre completo del usuario.
+ * @returns {string} - Iniciales en mayúsculas o '?' si no hay nombre.
+ */
 function iniciales(nombre) {
+  //modifica la cadena solo cogiendo con trim las iniciales
   if (!nombre) return '?';
   return nombre.trim().split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
 }
-
+/**
+ * Muestra u oculta un elemento del DOM añadiendo o quitando la clase 'hidden'.
+ * Se usa para controlar la visibilidad de secciones/páginas en la aplicación.
+ * @param {HTMLElement} el - Elemento del DOM que queremos mostrar u ocultar.
+ * @param {boolean} mostrar - Si es true se muestra; si es false se oculta.
+ */
 function toggle(el, mostrar) {
   if (mostrar) el.classList.remove('hidden');
   else el.classList.add('hidden');
 }
-
+/**
+ * Muestra elemento del DOM quitando la clase 'hidden'.
+ * @param {HTMLElement} el - Elemento del DOM que queremos mostrar u ocultar.
+ * @param {boolean} mostrar - Si es true se muestra; si es false se oculta.
+ */
 function mostrarToast(mensaje, tipo = 'success') {
+  //Recoge o crea una capa div para aplicar a todo el contexto para aplicar la clase hidden
   let toast = document.getElementById('app-toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'app-toast';
     document.body.appendChild(toast);
   }
+
   toast.textContent = mensaje;
   toast.className = `app-toast app-toast--${tipo} app-toast--visible`;
+  //Muestra u oculta el html tras 3 segundos
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => {
     toast.classList.remove('app-toast--visible');
@@ -52,12 +79,18 @@ function mostrarToast(mensaje, tipo = 'success') {
 /* ============================================================
    DEPORTES CONFIG (cargado desde Firestore)
    ============================================================ */
-
+//Array con todos los deportes guardados en la base de datos
 let DEPORTES_CONFIG = {};
-
+/**
+ * Carga la configuración de todos los deportes desde la base de datos
+ * @returns {Promise<Array>} - Lista de deportes obtenidos desde la BD.
+ */
 async function cargarDeportesConfig() {
+  //REcoge los deportes de la base de datos
   const deportes = await DB.Deporte.listarTodos();
+
   DEPORTES_CONFIG = {};
+  //Añade los deportes al array
   deportes.forEach(d => {
     DEPORTES_CONFIG[d.id] = {
       label: d.Nombre,
@@ -72,23 +105,28 @@ async function cargarDeportesConfig() {
 /* ============================================================
    NAVEGACIÓN
    ============================================================ */
-
+//Array con todas las paginas disponibles en la web
 const PAGINAS = ['dashboard', 'deportes', 'reservas', 'horarios', 'suscripciones', 'admin'];
-
+/**
+ * Navega a una página específica de la aplicación 
+ * @param {string} pagina - Nombre de la página a mostrar (dashboard, deportes, reservas, etc.)
+ */
 async function navegarA(pagina) {
+  //Oculta todas las paginas de la web añadiendo la clase hidden a todas ellas
   PAGINAS.forEach(p => {
     const el = document.getElementById(`page-${p}`);
     if (el) el.classList.add('hidden');
   });
+//elimina hidden de la pagina a mostrar
   const target = document.getElementById(`page-${pagina}`);
   if (target) target.classList.remove('hidden');
-
+//Recorre y activa solo la pagina seleccionada
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.toggle('active', link.dataset.page === pagina);
   });
-
+//Recoge los deportes para que se refleje tanto en la web como en la base de datos los deportes
   await cargarDeportesConfig();
-
+//Renderiza la pagina seleccionada
   switch (pagina) {
     case 'dashboard': await renderDashboard(); break;
     case 'deportes': await renderDeportes(); break;
@@ -98,7 +136,7 @@ async function navegarA(pagina) {
     case 'admin': await renderAdmin(); break;
   }
 }
-
+//Recorremos todos los objetos que contengan el selector nav-link y les añade un boton a la espera del evento
 document.querySelectorAll('.nav-link').forEach(link => {
   link.addEventListener('click', (e) => {
     e.preventDefault();
@@ -109,23 +147,28 @@ document.querySelectorAll('.nav-link').forEach(link => {
 /* ============================================================
    DASHBOARD
    ============================================================ */
-
+/**
+ * Renderiza el panel principal (dashboard) del usuario y muestra los datos 
+ */
 async function renderDashboard() {
+  //Obtiene le usuario autenticado si no existe sale de la funcion
   const usuario = await Auth.usuarioActual();
   if (!usuario) return;
 
+  //Recoge el nombre para mostrar un saludo al iniciar la sesion
   const primerNombre = usuario.Nombre.split(' ')[0];
   document.getElementById('hero-user-name').textContent = primerNombre;
-
+  //Obtenemos todas las suscripciones y las filtramos por activas junto a sus reservas
   const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
   const subsActivas = subs.filter(s => s.Estado === 'activa').length;
   const reservas = await DB.Reserva.listarPorUsuario(usuario.US_DNI);
-
+//Muestra dentro de la pagina dashboards los datos
   document.getElementById('stat-subs').textContent = subsActivas;
   document.getElementById('stat-reservas').textContent = reservas.length;
 
-  // Próximas reservas
+//Recoge las proximas clases
   const containerReservas = document.getElementById('dashboard-reservas');
+  //Filtra solo las activas, en caso de no existir ninguna genera un html y lo inserta en index
   const proximas = reservas
     .filter(r => new Date(r.Fecha_Inicio) >= new Date())
     .slice(0, 4);
@@ -133,6 +176,7 @@ async function renderDashboard() {
   if (proximas.length === 0) {
     containerReservas.innerHTML = `<div class="empty-state">No tienes clases próximas reservadas. <a href="#" data-page="reservas" class="nav-link-inline">Reservar ahora →</a></div>`;
   } else {
+    //Muestra las activas
     containerReservas.innerHTML = proximas.map(r => reservaItemHTML(r)).join('');
     containerReservas.querySelectorAll('.btn-cancelar-reserva').forEach(btn => {
       btn.addEventListener('click', () => cancelarReserva(btn.dataset.id));
@@ -142,10 +186,12 @@ async function renderDashboard() {
   // Tarjetas de deportes
   const dashDeportes = document.getElementById('dash-deportes');
   const deportesList = Object.keys(DEPORTES_CONFIG);
-
+  //Si no existen los deportes se genera un html 
   if (deportesList.length === 0) {
+    //Construye cada tarjeta de deporte disponible
     dashDeportes.innerHTML = '<div class="empty-state">No hay deportes configurados todavía.</div>';
   } else {
+//Obtenemos todas las clases disponibles por deportes y si tiene suscripcion activa para el mismo
     const clasesPorDeporte = await Promise.all(
       deportesList.map(key => DB.Clases.listarPorDeporte(key))
     );
@@ -176,9 +222,9 @@ async function renderDashboard() {
 }
 
 function reservaItemHTML(r) {
-  const cfg   = DEPORTES_CONFIG[r.Deporte] || {};
+  const cfg = DEPORTES_CONFIG[r.Deporte] || {};
   const color = r.DeporteColor || cfg.color || '#fff';
-  const icon  = r.DeporteIcono || cfg.icon  || '🏅';
+  const icon = r.DeporteIcono || cfg.icon || '🏅';
   const label = r.DeporteNombre || cfg.label || r.Deporte;
 
   const terceroBadge = r.Tercero
@@ -250,19 +296,22 @@ async function renderDeportes() {
 /* ============================================================
    RESERVAS
    ============================================================ */
-
+/**
+ * Funcion que prepara la página de reservas y carga todos los deportes, clases e historial
+ */
 async function renderPaginaReservas() {
+  // Obtiene el usuario actual
   const usuario = await Auth.usuarioActual();
   if (!usuario) return;
-
+  // Obtiene selector de todos los deportes y lo reinicia
   const selectDeporte = document.getElementById('reserva-deporte');
   selectDeporte.innerHTML = '<option value="">— Selecciona deporte —</option>';
-
+  // Comprueba en paralelo si el usuario tiene suscripción activa a cada deporte
   const deportesList = Object.keys(DEPORTES_CONFIG);
   const activosPorDeporte = await Promise.all(
     deportesList.map(key => DB.Subscricion.tieneActiva(usuario.US_DNI, key))
   );
-
+  // Añade los deportes a los que esté suscrito
   deportesList.forEach((key, i) => {
     if (activosPorDeporte[i]) {
       const cfg = DEPORTES_CONFIG[key];
@@ -272,18 +321,18 @@ async function renderPaginaReservas() {
       selectDeporte.appendChild(opt);
     }
   });
-
+  // En caso de que no exista ninguna suscripción
   if (selectDeporte.options.length === 1) {
     selectDeporte.innerHTML = '<option value="">No tienes suscripciones activas</option>';
   }
-
+  // Fecha mínima = hoy
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('reserva-fecha').min = hoy;
   document.getElementById('reserva-fecha').value = hoy;
 
-  // ---- Selector de titular (yo / tercero) ----
+  //Selector de titular (yo / tercero)
   const selectTitular = document.getElementById('reserva-titular');
-  const panelTercero  = document.getElementById('panel-tercero');
+  const panelTercero = document.getElementById('panel-tercero');
 
   // Clonar para limpiar listeners previos
   const nuevoSelectTitular = selectTitular.cloneNode(true);
@@ -310,15 +359,16 @@ async function renderPaginaReservas() {
       nuevoSelect.dispatchEvent(new Event('change'));
     }
   });
-
+  // Listener: al cambiar deporte, cargar sus clases.
+  // Clonamos el nodo para eliminar listeners previos y evitar duplicados
   const nuevoSelect = selectDeporte.cloneNode(true);
   selectDeporte.parentNode.replaceChild(nuevoSelect, selectDeporte);
-
+// Si el deporte cambia carga las clases del mismo
   nuevoSelect.addEventListener('change', async () => {
     const deporte = nuevoSelect.value;
     const selectClase = document.getElementById('reserva-clase');
     selectClase.innerHTML = '';
-
+// Muestra el mensaje en caso de no elegir deporte y resetea los límites de fecha
     if (!deporte) {
 
 
@@ -326,14 +376,14 @@ async function renderPaginaReservas() {
 
       return;
     }
-
+// Resetea los límites del input de fecha al deseleccionar deporte
     const clases = await DB.Clases.listarPorDeporte(deporte);
     if (clases.length === 0) {
       selectClase.innerHTML = '<option value="">Sin clases disponibles</option>';
       return;
     }
 
-    // --- Determinar la edad a usar para filtrar categorías ---
+    // Determinar la edad a usar para filtrar categorías
     // Si el titular es un tercero y ya introdujo su edad, se usa esa; si no, la del usuario
     const esTercero = document.getElementById('reserva-titular').value === 'tercero';
     const edadTerceroInput = Number(document.getElementById('tercero-edad').value);
@@ -351,31 +401,31 @@ async function renderPaginaReservas() {
       edadReferencia = edadUsuario;
     }
 
-    // --- Buscar categorías: primero específicas del deporte, si no hay usar globales ---
+    //Buscar categorías: primero específicas del deporte, si no hay usar globales
     const todasCats = await DB.Categoria.listarTodas();
     let categoriasDeporte = todasCats.filter(c => c.Deporte === deporte);
     if (categoriasDeporte.length === 0) {
       categoriasDeporte = todasCats.filter(c => !c.Deporte || c.Deporte === '');
     }
 
-    // --- Categoría que corresponde a la edad de referencia ---
+    //Categoría que corresponde a la edad de referencia
     const categoriaRef = categoriasDeporte.find(
       cat => edadReferencia >= cat.EdadMin && edadReferencia <= cat.EdadMax
     );
 
-    // Texto orientativo para mensajes de error
+    //Texto orientativo para mensajes de error
     const quienLabel = usarEdadTercero
       ? `el invitado (${edadReferencia} años)`
       : `tu edad (${edadReferencia} años)`;
 
-    // --- Filtrar clases por categoría ---
+    // Filtrar clases por categoría
     const clasesFiltradas = categoriasDeporte.length === 0
       ? clases  // sin categorías definidas → mostrar todas
       : clases.filter(c => {
-          if (!c.Categoria) return false;
-          if (!categoriaRef) return false;
-          return c.Categoria === categoriaRef.id;
-        });
+        if (!c.Categoria) return false;
+        if (!categoriaRef) return false;
+        return c.Categoria === categoriaRef.id;
+      });
 
     if (clasesFiltradas.length === 0) {
       selectClase.innerHTML = categoriaRef
@@ -383,7 +433,7 @@ async function renderPaginaReservas() {
         : `<option value="">No hay categoría para ${quienLabel}</option>`;
       return;
     }
-
+    // Añade las clases al selector
     for (const c of clasesFiltradas) {
       const prof = c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null;
       const opt = document.createElement('option');
@@ -391,21 +441,22 @@ async function renderPaginaReservas() {
       opt.textContent = `${c.Horario} — ${c.Descripcion} (${prof ? prof.Nombre : 'Sin prof.'})`;
       selectClase.appendChild(opt);
     }
-
+    // Obtiene la suscripción activa del usuario para limitar el rango de fechas reservables
     const sub = await DB.Subscricion.obtenerActiva(usuario.US_DNI, deporte);
     if (sub) {
       const hoyStr = new Date().toISOString().split('T')[0];
       const fechaInput = document.getElementById('reserva-fecha');
+      // Establece el mínimo como el mayor entre hoy y el inicio de la suscripción
       const fechaMin = sub.Fecha_Inicio > hoyStr ? sub.Fecha_Inicio : hoyStr;
       fechaInput.value = fechaMin;
     }
   });
-
+  // Botón reservar — clonar para evitar listeners duplicados
   const btnReserva = document.getElementById('btn-hacer-reserva');
   const nuevoBtn = btnReserva.cloneNode(true);
   btnReserva.parentNode.replaceChild(nuevoBtn, btnReserva);
   nuevoBtn.addEventListener('click', hacerReserva);
-
+  // Renderiza el historial de reservas
   await renderHistorialReservas();
 }
 
@@ -414,23 +465,24 @@ async function renderPaginaReservas() {
  * Soporta reservas para el propio usuario o para una tercera persona.
  */
 async function hacerReserva() {
+  // Variables de usuario y elementos del formulario
   const usuario = await Auth.usuarioActual();
   const deporteEl = document.getElementById('reserva-deporte');
-  const claseEl   = document.getElementById('reserva-clase');
-  const fechaEl   = document.getElementById('reserva-fecha');
-  const msgErr    = document.getElementById('reserva-msg');
-  const msgOk     = document.getElementById('reserva-ok');
-
+  const claseEl = document.getElementById('reserva-clase');
+  const fechaEl = document.getElementById('reserva-fecha');
+  const msgErr = document.getElementById('reserva-msg');
+  const msgOk = document.getElementById('reserva-ok');
+  // Oculta mensajes previos
   toggle(msgErr, false);
   toggle(msgOk, false);
 
   const Clase_ID = claseEl.value;
-  const Fecha    = fechaEl.value;
-
+  const Fecha = fechaEl.value;
+  // Validaciones de valores del formulario
   if (!deporteEl.value) { msgErr.textContent = 'Selecciona un deporte.'; toggle(msgErr, true); return; }
-  if (!Clase_ID)        { msgErr.textContent = 'Selecciona una clase.';  toggle(msgErr, true); return; }
-  if (!Fecha)           { msgErr.textContent = 'Selecciona una fecha.';  toggle(msgErr, true); return; }
-
+  if (!Clase_ID) { msgErr.textContent = 'Selecciona una clase.'; toggle(msgErr, true); return; }
+  if (!Fecha) { msgErr.textContent = 'Selecciona una fecha.'; toggle(msgErr, true); return; }
+  // Comprueba que las fechas sean dentro del horario normal (lunes a viernes)
   const diaSemana = new Date(Fecha + 'T12:00:00').getDay();
   if (diaSemana === 0 || diaSemana === 6) {
     msgErr.textContent = 'Las clases son de lunes a viernes.';
@@ -440,13 +492,15 @@ async function hacerReserva() {
   // ---- Datos del tercero ----
   const esTercero = document.getElementById('reserva-titular').value === 'tercero';
   let tercero = null;
-
+  /**
+   * creamos a la otra persona por si el usuario quiere añadir a un familiar 
+   */
   if (esTercero) {
-    const tNombre   = document.getElementById('tercero-nombre').value.trim();
-    const tEdad     = document.getElementById('tercero-edad').value.trim();
+    const tNombre = document.getElementById('tercero-nombre').value.trim();
+    const tEdad = document.getElementById('tercero-edad').value.trim();
     const tTelefono = document.getElementById('tercero-telefono').value.trim();
     const tAlergias = document.getElementById('tercero-alergias').value.trim();
-    const tDNI      = document.getElementById('tercero-dni').value.trim();
+    const tDNI = document.getElementById('tercero-dni').value.trim();
 
     if (!tNombre || tNombre.length < 3) {
       msgErr.textContent = 'El nombre del invitado debe tener al menos 3 caracteres.';
@@ -468,16 +522,18 @@ async function hacerReserva() {
       msgErr.textContent = 'El DNI del invitado no tiene un formato válido (ej: 12345678A).';
       toggle(msgErr, true); return;
     }
-
+    /**
+     * campos de la otra persona 
+     */
     tercero = {
-      Nombre:   tNombre,
-      Edad:     tEdad,
+      Nombre: tNombre,
+      Edad: tEdad,
       Telefono: tTelefono,
       Alergias: tAlergias,
-      DNI:      tDNI || null,
+      DNI: tDNI || null,
     };
   }
-
+  // Crea la reserva; en caso de error lo muestra
   const resultado = await DB.Reserva.crear({ US_DNI: usuario.US_DNI, Clase_ID, Fecha, tercero });
 
   if (!resultado.ok) {
@@ -487,6 +543,7 @@ async function hacerReserva() {
   }
 
   const para = esTercero ? ` para ${tercero.Nombre}` : '';
+  // Mensaje de corroboración y actualización del dashboard
   msgOk.textContent = `¡Reserva realizada correctamente${para} para el ${formatFechaSola(Fecha)}!`;
   toggle(msgOk, true);
   await renderHistorialReservas();
@@ -494,23 +551,28 @@ async function hacerReserva() {
   const reservas = await DB.Reserva.listarPorUsuario(usuario.US_DNI);
   document.getElementById('stat-reservas').textContent = reservas.length;
 }
-
+/**
+ * Funcion que muestra las reservas del usuario
+ */
 async function renderHistorialReservas() {
   const usuario = await Auth.usuarioActual();
   const container = document.getElementById('reservas-historial');
   const reservas = await DB.Reserva.listarPorUsuario(usuario.US_DNI);
-
+  // Comprobar reservas y mostrar mensaje en consecuencia
   if (reservas.length === 0) {
     container.innerHTML = '<div class="empty-state">No tienes reservas todavía.</div>';
     return;
   }
-
+  // HTML de cada reserva y listener para cancelar
   container.innerHTML = reservas.map(r => reservaItemHTML(r)).join('');
   container.querySelectorAll('.btn-cancelar-reserva').forEach(btn => {
     btn.addEventListener('click', () => cancelarReserva(btn.dataset.id));
   });
 }
-
+/**
+ * Función que cancela una reserva por su ID.
+ * @param {string} id Identificador de la reserva a cancelar
+ */
 async function cancelarReserva(id) {
   const usuario = await Auth.usuarioActual();
   const resultado = await DB.Reserva.cancelar(id, usuario.US_DNI);
@@ -523,7 +585,7 @@ async function cancelarReserva(id) {
 /* ============================================================
    SUSCRIPCIONES
    ============================================================ */
-
+// Inicialización de variable global para la suscripción a cancelar
 let _cancelarSubId = null;
 
 /* ============================================================
@@ -604,9 +666,9 @@ async function renderHorarios() {
               <tr>
                 <td class="hora-cell">${hora}</td>
                 ${DIAS_SEMANA.map(dia => {
-                  const items = mapa[dia][hora];
-                  if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
-                  return `<td class="celda-clase">
+      const items = mapa[dia][hora];
+      if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
+      return `<td class="celda-clase">
                     ${items.map(it => `
                       <div class="horario-pill" style="background:${it.cfg.color || '#888'}22;border-left:3px solid ${it.cfg.color || '#888'}">
                         <span class="pill-deporte" style="color:${it.cfg.color || '#888'}">${it.cfg.icon || ''} ${it.cfg.label || it.Deporte}</span>
@@ -615,7 +677,7 @@ async function renderHorarios() {
                         ${it.profNombre ? `<span class="pill-prof">👤 ${it.profNombre}</span>` : ''}
                       </div>`).join('')}
                   </td>`;
-                }).join('')}
+    }).join('')}
               </tr>`).join('')}
           </tbody>
         </table>
@@ -628,20 +690,29 @@ async function renderHorarios() {
     await renderTabla(e.target.value);
   });
 }
-
+/**
+ * Renderiza la pagina de suscripciones del usuario en caso de que exista uno y sus planes disponibles
+ */
 async function renderSuscripciones() {
+  // Obtención de usuario actual
   const usuario = await Auth.usuarioActual();
   if (!usuario) return;
+  // Si lo encuentra renderiza sus suscripciones y los planes disponibles
   await renderMisSuscripciones();
   await renderPlanesContratacion();
 }
-
+/**
+ * Muestra todas las suscripciones activas y calcula los dias restantes junto a la creación de iconos correspondiente
+ */
 async function renderMisSuscripciones() {
+  // Creación de variables y recolección del usuario actual
   const usuario = await Auth.usuarioActual();
   const container = document.getElementById('mis-suscripciones');
+  // Obtención de todas las suscripciones del usuario
   const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
+  // Filtro para solo las activas
   const activas = subs.filter(s => s.Estado === 'activa');
-
+  // En caso de no tener suscripciones activas muestra el mensaje
   if (activas.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
@@ -650,7 +721,7 @@ async function renderMisSuscripciones() {
       </div>`;
     return;
   }
-
+  // Caso contrario muestra sus suscripciones activas
   container.innerHTML = activas.map(s => {
     const cfg = DEPORTES_CONFIG[s.Deporte] || {};
     const hoy = new Date();
@@ -679,13 +750,16 @@ async function renderMisSuscripciones() {
         </div>
       </div>`;
   }).join('');
-
+  // Listener para cancelar la suscripción
   container.querySelectorAll('.btn-cancelar-sub').forEach(btn => {
     btn.addEventListener('click', () => abrirModalCancelacion(btn.dataset.id));
   });
 }
-
+/**
+ * Muestra los planes de contratación disponibles para cada deporte
+ */
 async function renderPlanesContratacion() {
+  // Recoge al usuario actual y guardamos los planes
   const usuario = await Auth.usuarioActual();
   const container = document.getElementById('planes-grid');
   const deportesList = Object.entries(DEPORTES_CONFIG);
@@ -694,11 +768,11 @@ async function renderPlanesContratacion() {
     container.innerHTML = '<div class="empty-state" style="grid-column:1/-1">El administrador aún no ha configurado ningún deporte.</div>';
     return;
   }
-
+  // Mostrar un div con la clase plan-card plan-skeleton mientras carga
   container.innerHTML = deportesList.map(() =>
     `<div class="plan-card plan-skeleton"></div>`
   ).join('');
-
+  // Comprueba si el usuario tiene suscripción activa por deporte
   const activosPorDeporte = await Promise.all(
     deportesList.map(([key]) => DB.Subscricion.tieneActiva(usuario.US_DNI, key))
   );
@@ -716,18 +790,18 @@ async function renderPlanesContratacion() {
   );
 
   // Determinar si el usuario puede suscribirse a cada deporte
-  const puedeContratar = deportesList.map(([, ], i) => {
+  const puedeContratar = deportesList.map(([,], i) => {
     const cats = categoriasPorDeporte[i];
     if (cats.length === 0) return true; // Sin restricción de edad
     return cats.some(cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax);
   });
 
   // Encontrar la categoría del usuario para cada deporte
-  const categoriaUsuario = deportesList.map(([, ], i) => {
+  const categoriaUsuario = deportesList.map(([,], i) => {
     const cats = categoriasPorDeporte[i];
     return cats.find(cat => edadUsuario >= cat.EdadMin && edadUsuario <= cat.EdadMax) || null;
   });
-
+  // Genera las tarjetas de planes
   container.innerHTML = deportesList.map(([key, cfg], i) => {
     const yaActivo = activosPorDeporte[i];
     const puede = puedeContratar[i];
@@ -778,16 +852,16 @@ async function renderPlanesContratacion() {
           </div>
         </div>
         ${yaActivo
-          ? `<div class="plan-ya-activo"><span style="color:var(--clr-success)">✓</span> Ya tienes este deporte activo</div>`
-          : puede
-            ? `<button class="btn-contratar full" data-deporte="${key}" style="--btn-color:${cfg.color}">Suscribirse a ${cfg.label}</button>`
-            : `<button class="btn-contratar full btn-contratar--bloqueado" disabled data-deporte="${key}" title="Tu edad (${edadUsuario} años) no cumple los requisitos de ninguna categoría">
+        ? `<div class="plan-ya-activo"><span style="color:var(--clr-success)">✓</span> Ya tienes este deporte activo</div>`
+        : puede
+          ? `<button class="btn-contratar full" data-deporte="${key}" style="--btn-color:${cfg.color}">Suscribirse a ${cfg.label}</button>`
+          : `<button class="btn-contratar full btn-contratar--bloqueado" disabled data-deporte="${key}" title="Tu edad (${edadUsuario} años) no cumple los requisitos de ninguna categoría">
                  ⛔ No cumples los requisitos de edad
                </button>`
-        }
+      }
       </div>`;
   }).join('');
-
+  // Permite al usuario seleccionar la modalidad
   container.querySelectorAll('.plan-option').forEach(opt => {
     opt.addEventListener('click', () => {
       const deporte = opt.dataset.deporte;
@@ -798,19 +872,20 @@ async function renderPlanesContratacion() {
       opt.classList.add('selected');
     });
   });
-
+  // Contratar suscripción
   container.querySelectorAll('.btn-contratar:not([disabled])').forEach(btn => {
     btn.addEventListener('click', async () => {
       const deporte = btn.dataset.deporte;
       const cfg = DEPORTES_CONFIG[deporte];
+      // Obtención de la modalidad seleccionada anteriormente
       const modalidadOpt = container.querySelector(`.plan-option.selected[data-deporte="${deporte}"]`);
       const modalidad = modalidadOpt ? modalidadOpt.dataset.modalidad : 'mensual';
-
+      // Estado de carga del botón
       btn.disabled = true;
       btn.textContent = 'Procesando…';
       btn.style.opacity = '0.7';
 
-      // Segunda validación de seguridad en el servidor
+      // Validar edad del usuario contra las categorías del deporte
       const categoriasDeporte = await DB.Categoria.listarPorDeporte(deporte);
       if (categoriasDeporte.length > 0) {
         const categoriaValida = categoriasDeporte.some(
@@ -831,9 +906,9 @@ async function renderPlanesContratacion() {
           return;
         }
       }
-
+      // Creación de la suscripción si es posible
       const resultado = await DB.Subscricion.crear({ US_DNI: usuario.US_DNI, Modalidad: modalidad, Deporte: deporte });
-
+      // Muestra error en caso de que exista
       if (!resultado.ok) {
         btn.disabled = false;
         btn.textContent = `Suscribirse a ${cfg.label}`;
@@ -843,9 +918,10 @@ async function renderPlanesContratacion() {
       }
 
       mostrarToast(`¡Suscripción a ${cfg.label} activada! 🎉`, 'success');
+      // Actualiza las suscripciones y planes
       await renderMisSuscripciones();
       await renderPlanesContratacion();
-
+      // Actualizar stat del dashboard si está visible
       const statSubs = document.getElementById('stat-subs');
       if (statSubs) {
         const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
@@ -854,18 +930,25 @@ async function renderPlanesContratacion() {
     });
   });
 }
-
+/**
+ * Muestra la configuración de la suscripción para cancelar la misma
+ * @param {string} subId ID de la suscripción a cancelar
+ */
 function abrirModalCancelacion(subId) {
   _cancelarSubId = subId;
   toggle(document.getElementById('modal-cancelar'), true);
 }
-
+// Crea un listener con un botón para poder cancelar la suscripción seleccionada
 document.getElementById('btn-confirm-cancelar').addEventListener('click', async () => {
+  // Si no hay ninguna seleccionada no hace nada
   if (_cancelarSubId === null) return;
+  // Variables que contienen la información del usuario y suscripción
   const usuario = await Auth.usuarioActual();
   const resultado = await DB.Subscricion.cancelar(_cancelarSubId, usuario.US_DNI);
+  // Si la cancelación es correcta oculta la confirmación y renderiza la lista de suscripciones y planes
   if (resultado.ok) {
     toggle(document.getElementById('modal-cancelar'), false);
+    // Reset de variable para la cancelación
     _cancelarSubId = null;
     await renderMisSuscripciones();
     await renderPlanesContratacion();
@@ -873,12 +956,13 @@ document.getElementById('btn-confirm-cancelar').addEventListener('click', async 
     document.getElementById('stat-subs').textContent = subs.filter(s => s.Estado === 'activa').length;
   }
 });
-
+// Listener para cerrar el modal cuando el usuario pulsa cancelar
 document.getElementById('btn-cancel-modal').addEventListener('click', () => {
   toggle(document.getElementById('modal-cancelar'), false);
+  // Reset de variable
   _cancelarSubId = null;
 });
-
+// Listener para cerrar modal cuando el usuario pulsa la "X"
 document.getElementById('close-modal-cancelar').addEventListener('click', () => {
   toggle(document.getElementById('modal-cancelar'), false);
   _cancelarSubId = null;
@@ -887,10 +971,15 @@ document.getElementById('close-modal-cancelar').addEventListener('click', () => 
 /* ============================================================
    PERFIL
    ============================================================ */
-
+/**
+ * Listener para abrir el perfil de usuario y carga los datos del usuario junto a sus suscripciones activas
+ */
 document.getElementById('btn-perfil').addEventListener('click', async () => {
+  // Obtiene el usuario actual autorizado
   const usuario = await Auth.usuarioActual();
+  // Si no se encuentra no carga nada
   if (!usuario) return;
+  // Obtención de suscripciones activas
   const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
   const activas = subs.filter(s => s.Estado === 'activa');
 
@@ -898,7 +987,7 @@ document.getElementById('btn-perfil').addEventListener('click', async () => {
     ? `<span style="background:rgba(232,255,71,0.15);border:1px solid rgba(232,255,71,0.4);color:var(--clr-accent);
                     font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.5px">ADMIN</span>`
     : '';
-
+  // Rellena el perfil con los datos del usuario
   document.getElementById('perfil-body').innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.5rem">
       <div style="width:56px;height:56px;border-radius:50%;background:rgba(232,255,71,0.1);
@@ -947,19 +1036,19 @@ document.getElementById('btn-perfil').addEventListener('click', async () => {
         🗑 Eliminar mi cuenta
       </button>
     </div>`;
-
+  // Muestra el perfil
   toggle(document.getElementById('modal-perfil'), true);
-
+  // Listener del botón "Eliminar mi cuenta" (se re-registra cada vez que se abre el perfil)
   document.getElementById('btn-abrir-eliminar-cuenta').addEventListener('click', () => {
     toggle(document.getElementById('modal-perfil'), false);
     toggle(document.getElementById('modal-eliminar-cuenta'), true);
   });
 });
-
+// Listener para cerrar el perfil al pulsar la X
 document.getElementById('close-modal-perfil').addEventListener('click', () => {
   toggle(document.getElementById('modal-perfil'), false);
 });
-
+// Listener para cerrar en caso de que el usuario pulse en cualquier otro sitio que no sea el perfil
 document.getElementById('modal-perfil').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) toggle(e.currentTarget, false);
 });
@@ -976,7 +1065,7 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 /* ============================================================
    ELIMINAR CUENTA
    ============================================================ */
-
+// Listener para cerrar la sesion del usuario y recargar la página borrando la sesión anterior
 document.getElementById('close-modal-eliminar-cuenta').addEventListener('click', () => {
   toggle(document.getElementById('modal-eliminar-cuenta'), false);
 });
@@ -998,6 +1087,7 @@ document.getElementById('btn-confirm-eliminar-cuenta').addEventListener('click',
     mostrarToast(resultado.error, 'error');
     return;
   }
+  // Cuenta eliminada → redirigir al login
   location.reload();
 });
 
@@ -1013,7 +1103,10 @@ const adminState = {
   editandoClase: null,
   editandoCategoria: null,
 };
-
+/**
+ * Renderiza el panel de administración si el usuario tiene rol admin;
+ * en caso contrario muestra un mensaje de acceso denegado.
+ */
 async function renderAdmin() {
   const usuario = await Auth.usuarioActual();
   if (!usuario || usuario.Rol !== 'admin') {
@@ -1025,7 +1118,9 @@ async function renderAdmin() {
   renderAdminTabs();
   await switchAdminTab(adminState.tabActual);
 }
-
+/**
+ * Genera las pestañas de navegación del panel admin y sus listeners
+ */
 function renderAdminTabs() {
   const tabs = document.getElementById('admin-tabs');
   if (!tabs) return;
@@ -1046,7 +1141,10 @@ function renderAdminTabs() {
     btn.addEventListener('click', () => switchAdminTab(btn.dataset.tab));
   });
 }
-
+/**
+ * Cambia la pestaña activa del panel admin y renderiza su contenido
+ * @param {string} tab Identificador de la pestaña a mostrar
+ */
 async function switchAdminTab(tab) {
   adminState.tabActual = tab;
   renderAdminTabs();
@@ -1063,6 +1161,9 @@ async function switchAdminTab(tab) {
 }
 
 /* --- ADMIN: DEPORTES --- */
+/**
+ * Renderiza la tabla de deportes en el panel admin con opciones de crear, editar y eliminar
+ */
 async function renderAdminDeportes() {
   const content = document.getElementById('admin-content');
   const deportes = await DB.Deporte.listarTodos();
@@ -1112,7 +1213,10 @@ async function renderAdminDeportes() {
     btn.addEventListener('click', () => confirmarEliminarDeporte(btn.dataset.id, btn.dataset.nombre));
   });
 }
-
+/**
+ * Muestra el formulario inline para crear o editar un deporte
+ * @param {object|null} dep Deporte a editar, o null para crear uno nuevo
+ */
 function mostrarFormDeporte(dep) {
   const formEl = document.getElementById('form-deporte');
   const esNuevo = !dep;
@@ -1179,7 +1283,11 @@ function mostrarFormDeporte(dep) {
     await renderAdminDeportes();
   });
 }
-
+/**
+ * Muestra el modal de confirmación para eliminar un deporte en cascada
+ * @param {string} id ID del deporte a eliminar
+ * @param {string} nombre Nombre del deporte para mostrar en el mensaje
+ */
 function confirmarEliminarDeporte(id, nombre) {
   const modal = document.getElementById('modal-admin-eliminar');
   document.getElementById('admin-eliminar-msg').innerHTML =
@@ -1203,6 +1311,9 @@ function confirmarEliminarDeporte(id, nombre) {
 }
 
 /* --- ADMIN: CATEGORÍAS --- */
+/**
+ * Renderiza la tabla de categorías en el panel admin con opciones de crear, editar y eliminar
+ */
 async function renderAdminCategorias() {
   const content = document.getElementById('admin-content');
   await cargarDeportesConfig();
@@ -1269,7 +1380,11 @@ async function renderAdminCategorias() {
     });
   });
 }
-
+/**
+ * Muestra el formulario inline para crear o editar una categoría
+ * @param {object|null} cat Categoría a editar, o null para crear una nueva
+ * @param {Array} deportesList Lista de deportes disponibles para el selector
+ */
 function mostrarFormCategoria(cat, deportesList) {
   const formEl = document.getElementById('form-categoria');
   const esNuevo = !cat;
@@ -1330,6 +1445,9 @@ function mostrarFormCategoria(cat, deportesList) {
 }
 
 /* --- ADMIN: PROFESORES --- */
+/**
+ * Renderiza la tabla de profesores en el panel admin con opciones de crear, editar y eliminar
+ */
 async function renderAdminProfesores() {
   const content = document.getElementById('admin-content');
   const profesores = await DB.Profesor.listarTodos();
@@ -1400,7 +1518,9 @@ async function renderAdminProfesores() {
     });
   });
 }
-
+/**
+ * muestra el formulario del profesor para crear o editar un profesor
+ */
 function mostrarFormProfesor(prof, deportesList) {
   const formEl = document.getElementById('form-profesor');
   const esNuevo = !prof;
@@ -1464,7 +1584,9 @@ function mostrarFormProfesor(prof, deportesList) {
   });
 }
 
-/* --- ADMIN: CLASES --- */
+/**
+ * Renderiza la tabla de clases en el panel admin con opciones de crear, editar y eliminar
+ */
 async function renderAdminClases() {
   const content = document.getElementById('admin-content');
   const clases = await DB.Clases.listarTodas();
@@ -1683,13 +1805,13 @@ async function renderAdminHorarios() {
           </thead>
           <tbody>
             ${horas.length === 0 ? `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--clr-muted)">No hay clases. Créalas en la pestaña Clases.</td></tr>` :
-              horas.map(hora => `
+        horas.map(hora => `
               <tr>
                 <td class="hora-cell">${hora}</td>
                 ${DIAS_SEMANA.map(dia => {
-                  const items = mapa[dia][hora];
-                  if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
-                  return `<td class="celda-clase">
+          const items = mapa[dia][hora];
+          if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
+          return `<td class="celda-clase">
                     ${items.map(it => `
                       <div class="horario-pill" style="background:${it.cfg.color || '#888'}22;border-left:3px solid ${it.cfg.color || '#888'}">
                         <span class="pill-deporte" style="color:${it.cfg.color || '#888'}">${it.cfg.icon || ''} ${it.cfg.label || it.Deporte}</span>
@@ -1699,7 +1821,7 @@ async function renderAdminHorarios() {
                         <button class="pill-edit-btn btn-ghost btn-sm" data-id="${it.id}">✏️ Editar</button>
                       </div>`).join('')}
                   </td>`;
-                }).join('')}
+        }).join('')}
               </tr>`).join('')}
           </tbody>
         </table>
@@ -1771,14 +1893,19 @@ document.getElementById('modal-admin-eliminar').addEventListener('click', (e) =>
 /* ============================================================
    INICIALIZACIÓN (post-login)
    ============================================================ */
-
+// Oculta la pantalla de login y muestra la aplicación cargando el dashboard
 window.App = {
+  /**
+   * Inicialización de la web: oculta el login, muestra la navbar y navega al inicio
+   */
   async iniciar() {
+    // Recoge el usuario actual
     const usuario = await Auth.usuarioActual();
     if (!usuario) return;
 
-    // Ocultar pantalla de auth, mostrar app
+    // Oculta la página de autenticación
     document.getElementById('page-auth').classList.add('hidden');
+    // Muestra barra de navegación, nombre de usuario y las iniciales del usuario
     document.getElementById('navbar').classList.remove('hidden');
     document.getElementById('nav-username').textContent = usuario.Nombre.split(' ')[0];
     document.getElementById('avatar-initials').textContent = iniciales(usuario.Nombre);
@@ -1798,7 +1925,11 @@ window.App = {
   }
 };
 
-/* ARRANQUE */
+/**
+ * Funcion que se ejecuta al cargar la página.
+ * Inserta los datos iniciales en la Base de datos en Firestore y
+ * Firebase Auth notifica el estado de sesión de forma asíncrona mediante onAuthStateChanged.
+ */
 (async function arranque() {
   // Ocultar el formulario de auth mientras se verifica la sesión,
   // para evitar que aparezca brevemente antes de redirigir al dashboard
@@ -1808,8 +1939,10 @@ window.App = {
   await DB.seed();
 
   const overlay = document.getElementById('loading-overlay');
-
+  // Firebase Auth notifica el estado de sesión de forma asíncrona.
+  // onAuthStateChanged se dispara una vez al cargar con el usuario actual (o null).
   firebase.auth().onAuthStateChanged(async (firebaseUser) => {
+    // Aplica animación de desvanecimiento y oculta completamente el overlay
     if (!overlay.classList.contains('hidden')) {
       overlay.classList.add('fade-out');
       setTimeout(() => overlay.classList.add('hidden'), 400);
