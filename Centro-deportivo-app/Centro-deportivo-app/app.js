@@ -1,46 +1,26 @@
 /**
-
- primero un git pull para descargar los cambios 
-Actualizar los cambios: 
-git add .
-git commit -m "Añadida la validación de usuarios en app.js y estilos nuevos"
-git push
->>>>>>> 1be1522260bb6342bf428f5fac91ee4efd7c45db
+ * app.js — Controlador principal de la aplicación
+ * Gestiona: navegación, dashboard, deportes, reservas, suscripciones y panel admin.
  */
 
 /* ============================================================
    UTILIDADES
    ============================================================ */
-/**
- * Formatea la fecha en estado iso a d/-m/y mas las horas
- * @param {string} -fecha en iso
- * @returns {string} devuelve  la fecha en formato d/m/y o -
- */
+
 function formatFecha(iso) {
-  if (!iso) return '—';//Si no hay texto devuelve el -
-  //Crea y formatea la fecha
-  const d = new Date(iso); 
+  if (!iso) return '—';
+  const d = new Date(iso);
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-/**
- * Convierte una fecha ISO (YYYY-MM-DD) en un formato d/m/y.
- * @param {string} isoDate - Fecha en formato ISO simple.
- * @returns {string} Devuelve la fecha formateada como d/m/y o '—' si no existe.
- */
+
 function formatFechaSola(isoDate) {
   if (!isoDate) return '—';
-  //Crea y formatea la fecha pasada pero solo las fechas no tiempo
   const [y, m, d] = isoDate.split('-');
   return `${d}/${m}/${y}`;
 }
-/**
- * Obtiene las iniciales de un nombre, tomando máximo dos palabras.
- * @param {string} nombre - Nombre completo del cual extraer las iniciales.
- * @returns {string} Devuelve las iniciales en mayúsculas o '?' si no existe nombre.
- */
+
 function iniciales(nombre) {
   if (!nombre) return '?';
-  //Une y devuelve las iniciales del nombre
   return nombre.trim().split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
 }
 
@@ -48,13 +28,8 @@ function toggle(el, mostrar) {
   if (mostrar) el.classList.remove('hidden');
   else el.classList.add('hidden');
 }
-/**
- * Muestra u oculta un elemento del DOM añadiendo o quitando la clase 'hidden'.
- * @param {HTMLElement} el - Elemento del DOM que se quiere mostrar u ocultar.
- * @param {boolean} mostrar - Indica si el elemento debe mostrarse (true) u ocultarse (false).
- */
+
 function mostrarToast(mensaje, tipo = 'success') {
-  //Obtencion del 
   let toast = document.getElementById('app-toast');
   if (!toast) {
     toast = document.createElement('div');
