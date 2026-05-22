@@ -1093,17 +1093,20 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 document.getElementById('close-modal-eliminar-cuenta').addEventListener('click', () => {
   toggle(document.getElementById('modal-eliminar-cuenta'), false);
 });
+//Boton de eliminar cuenta
 document.getElementById('btn-cancel-eliminar-cuenta').addEventListener('click', () => {
   toggle(document.getElementById('modal-eliminar-cuenta'), false);
 });
+//Boton eliminar cuenta
 document.getElementById('modal-eliminar-cuenta').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) toggle(e.currentTarget, false);
 });
+//Boton para confirmar el borrado de la cuenta
 document.getElementById('btn-confirm-eliminar-cuenta').addEventListener('click', async () => {
   const btn = document.getElementById('btn-confirm-eliminar-cuenta');
   btn.disabled = true;
   btn.textContent = 'Eliminando…';
-
+//Recoge el eliminado y lo sincroniza con l abase de datos
   const resultado = await Auth.eliminarCuenta();
   if (!resultado.ok) {
     btn.disabled = false;
@@ -1148,6 +1151,7 @@ async function renderAdmin() {
 function renderAdminTabs() {
   const tabs = document.getElementById('admin-tabs');
   if (!tabs) return;
+  //Creación de las label para la edición 
   const tabsList = [
     { id: 'deportes', label: '🏅 Deportes' },
     { id: 'categorias', label: '🏷️ Categorías' },
@@ -1155,12 +1159,12 @@ function renderAdminTabs() {
     { id: 'clases', label: '📅 Clases' },
     { id: 'horarios', label: '🗓️ Horarios' },
   ];
-
+//Genera dinamicamente los botones HTML de cada pestaña y la marca como activa si coincide 
   tabs.innerHTML = tabsList.map(t => `
     <button class="admin-tab ${adminState.tabActual === t.id ? 'active' : ''}" data-tab="${t.id}">
       ${t.label}
     </button>`).join('');
-
+//Selecciona todos los botones creados y les añade un listener con el id de la pestaña 
   tabs.querySelectorAll('.admin-tab').forEach(btn => {
     btn.addEventListener('click', () => switchAdminTab(btn.dataset.tab));
   });
@@ -1170,11 +1174,13 @@ function renderAdminTabs() {
  * @param {string} tab Identificador de la pestaña a mostrar
  */
 async function switchAdminTab(tab) {
+  //Actualiza la pestaña activa del panel administración y renderiza con la pagina
   adminState.tabActual = tab;
   renderAdminTabs();
+  //Crea mensaje de cargando en la web y selecciona el contenido de la pestañ
   const content = document.getElementById('admin-content');
   content.innerHTML = '<div class="admin-loading">Cargando…</div>';
-
+//Selecciona la funcion de render de la pagina que seleccione el admin
   switch (tab) {
     case 'deportes': await renderAdminDeportes(); break;
     case 'categorias': await renderAdminCategorias(); break;
@@ -1221,18 +1227,18 @@ async function renderAdminDeportes() {
           </table>`
     }
     </div>`;
-
+//Añade un listener al boton para crear nuevo depore
   document.getElementById('btn-nuevo-deporte').addEventListener('click', () => {
     mostrarFormDeporte(null);
   });
-
+//Botones de edición de deporte 
   content.querySelectorAll('.btn-edit-deporte').forEach(btn => {
     btn.addEventListener('click', async () => {
       const dep = await DB.Deporte.buscarPorId(btn.dataset.id);
       mostrarFormDeporte(dep);
     });
   });
-
+//Botones de eliminación de deporte 
   content.querySelectorAll('.btn-del-deporte').forEach(btn => {
     btn.addEventListener('click', () => confirmarEliminarDeporte(btn.dataset.id, btn.dataset.nombre));
   });
@@ -1264,17 +1270,19 @@ function mostrarFormDeporte(dep) {
     </div>`;
 
   formEl.classList.remove('hidden');
-
+//Busca el boton de cancelar y le añade un listener para ocultar el formulario 
   document.getElementById('btn-cancelar-form-deporte').addEventListener('click', () => {
     formEl.classList.add('hidden');
   });
 
+//Guarda el click del boton y realiza la validación
   document.getElementById('btn-guardar-deporte').addEventListener('click', async () => {
+    // Resetear errores y bloquear el botón mientras se procesa
     const btn = document.getElementById('btn-guardar-deporte');
     const errEl = document.getElementById('form-dep-error');
     errEl.classList.add('hidden');
     btn.disabled = true; btn.textContent = 'Guardando…';
-
+// Recoger datos del formulario
     const datos = {
       Icono: document.getElementById('dep-icono').value || '🏅',
       Color: document.getElementById('dep-color').value,
@@ -1286,6 +1294,7 @@ function mostrarFormDeporte(dep) {
     };
 
     let resultado;
+    // Crear o actualizar según el modo
     if (esNuevo) {
       const nombre = document.getElementById('dep-nombre').value.trim();
       if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Crear deporte'; return; }
@@ -1293,15 +1302,15 @@ function mostrarFormDeporte(dep) {
     } else {
       resultado = await DB.Deporte.actualizar(dep.id, datos);
     }
-
+// Restaurar botón
     btn.disabled = false; btn.textContent = esNuevo ? 'Crear deporte' : 'Guardar cambios';
-
+ // Mostrar error si la BD falló
     if (!resultado.ok) {
       errEl.textContent = resultado.error;
       errEl.classList.remove('hidden');
       return;
     }
-
+//SI el resultado esta bien muestra mensaje de confirmación y reccarga la lista 
     mostrarToast(esNuevo ? '¡Deporte creado!' : '¡Deporte actualizado!', 'success');
     await cargarDeportesConfig();
     await renderAdminDeportes();
@@ -1313,22 +1322,26 @@ function mostrarFormDeporte(dep) {
  * @param {string} nombre Nombre del deporte para mostrar en el mensaje
  */
 function confirmarEliminarDeporte(id, nombre) {
+  // Preparar el modal y mensaje de advertencia
   const modal = document.getElementById('modal-admin-eliminar');
   document.getElementById('admin-eliminar-msg').innerHTML =
     `⚠️ ¿Eliminar el deporte <strong>${nombre}</strong>?<br>
      <span style="font-size:13px;color:var(--clr-muted)">Se eliminarán en cascada todas sus categorías, clases, reservas de esas clases y suscripciones activas.</span>`;
-
+// Mostrar el modal
   toggle(modal, true);
-
+ // Resetear el botón de confirmación (evita listeners duplicados)
   const btnConfirm = document.getElementById('btn-admin-confirm-eliminar');
   const nuevoBtn = btnConfirm.cloneNode(true);
   btnConfirm.parentNode.replaceChild(nuevoBtn, btnConfirm);
-
+// Acción al confirmar la eliminación
   nuevoBtn.addEventListener('click', async () => {
     nuevoBtn.disabled = true; nuevoBtn.textContent = 'Eliminando…';
+    // Eliminar el deporte y todos sus datos asociados
     await DB.Deporte.eliminar(id);
+    // Recargar configuración y cerrar modal
     await cargarDeportesConfig();
     toggle(modal, false);
+    // Notificación de éxito y refrescar la lista
     mostrarToast(`Deporte "${nombre}" eliminado con todos sus datos.`, 'success');
     await renderAdminDeportes();
   });
@@ -1339,8 +1352,11 @@ function confirmarEliminarDeporte(id, nombre) {
  * Renderiza la tabla de categorías en el panel admin con opciones de crear, editar y eliminar
  */
 async function renderAdminCategorias() {
+  // Contenedor principal donde se mostrará la sección
   const content = document.getElementById('admin-content');
+  //Aegura la configuración 
   await cargarDeportesConfig();
+  //COnvierte la configuración en lista y obtener todas las categorias
   const deportesList = Object.entries(DEPORTES_CONFIG);
   const categorias = await DB.Categoria.listarTodas();
 
@@ -1374,27 +1390,30 @@ async function renderAdminCategorias() {
           </table>`
     }
     </div>`;
-
+// Botón para crear una nueva categoría
   document.getElementById('btn-nueva-categoria').addEventListener('click', () => {
     mostrarFormCategoria(null, deportesList);
   });
-
+// Botones de edición
   content.querySelectorAll('.btn-edit-cat').forEach(btn => {
     btn.addEventListener('click', async () => {
       const snap = await firebase.firestore().collection('Categoria').doc(btn.dataset.id).get();
       if (snap.exists) mostrarFormCategoria({ id: snap.id, ...snap.data() }, deportesList);
     });
   });
-
+ // Botones de eliminación
   content.querySelectorAll('.btn-del-cat').forEach(btn => {
     btn.addEventListener('click', () => {
       const modal = document.getElementById('modal-admin-eliminar');
+      // Mensaje del modal
       document.getElementById('admin-eliminar-msg').innerHTML =
         `¿Eliminar la categoría <strong>${btn.dataset.nombre}</strong>?`;
       toggle(modal, true);
+       // Resetear botón de confirmación (evita listeners duplicados)
       const btnC = document.getElementById('btn-admin-confirm-eliminar');
       const nuevoBtn = btnC.cloneNode(true);
       btnC.parentNode.replaceChild(nuevoBtn, btnC);
+      // Acción al confirmar la eliminación
       nuevoBtn.addEventListener('click', async () => {
         await DB.Categoria.eliminar(btn.dataset.id);
         toggle(modal, false);
@@ -1410,6 +1429,7 @@ async function renderAdminCategorias() {
  * @param {Array} deportesList Lista de deportes disponibles para el selector
  */
 function mostrarFormCategoria(cat, deportesList) {
+  //Recoge la categoria o la crea en caso de ser necesario
   const formEl = document.getElementById('form-categoria');
   const esNuevo = !cat;
 
@@ -1433,34 +1453,34 @@ function mostrarFormCategoria(cat, deportesList) {
         <button class="btn-ghost" id="btn-cancelar-form-cat">Cancelar</button>
       </div>
     </div>`;
-
+//Mostrar el formulario
   formEl.classList.remove('hidden');
-
+//Boton de cancelar formulario
   document.getElementById('btn-cancelar-form-cat').addEventListener('click', () => formEl.classList.add('hidden'));
-
+//Boton para guardar o actualizar categorias
   document.getElementById('btn-guardar-cat').addEventListener('click', async () => {
     const btn = document.getElementById('btn-guardar-cat');
     const errEl = document.getElementById('form-cat-error');
     errEl.classList.add('hidden');
-
+//Guarda los datos del formulario
     const datos = {
       Nombre: document.getElementById('cat-nombre').value.trim(),
       Deporte: document.getElementById('cat-deporte').value,
       EdadMin: parseInt(document.getElementById('cat-edad-min').value),
       EdadMax: parseInt(document.getElementById('cat-edad-max').value),
     };
-
+//Validaciones
     if (!datos.Nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.classList.remove('hidden'); return; }
     if (datos.EdadMin > datos.EdadMax) { errEl.textContent = 'La edad mínima no puede ser mayor que la máxima.'; errEl.classList.remove('hidden'); return; }
-
+//Bloquear Botón mientras guarda
     btn.disabled = true; btn.textContent = 'Guardando…';
-
+//Crea o actualiza según el modo
     const resultado = esNuevo
       ? await DB.Categoria.crear(datos)
       : await DB.Categoria.actualizar(cat.id, datos);
-
+//Restaura el boton
     btn.disabled = false; btn.textContent = esNuevo ? 'Crear categoría' : 'Guardar cambios';
-
+//Mostrar mensaje si falla la conexion con la base de datos
     if (!resultado.ok) { errEl.textContent = resultado.error; errEl.classList.remove('hidden'); return; }
 
     mostrarToast(esNuevo ? '¡Categoría creada!' : '¡Categoría actualizada!', 'success');
@@ -1473,6 +1493,7 @@ function mostrarFormCategoria(cat, deportesList) {
  * Renderiza la tabla de profesores en el panel admin con opciones de crear, editar y eliminar
  */
 async function renderAdminProfesores() {
+  //Variables para contener el contenido de la pagina, profesores y deportes
   const content = document.getElementById('admin-content');
   const profesores = await DB.Profesor.listarTodos();
   const deportesList = Object.entries(DEPORTES_CONFIG);
@@ -1511,18 +1532,18 @@ async function renderAdminProfesores() {
           </table>`
     }
     </div>`;
-
+//Edición de profesores
   document.getElementById('btn-nuevo-profesor').addEventListener('click', () => {
     mostrarFormProfesor(null, deportesList);
   });
-
+// Eliminar profesor 
   content.querySelectorAll('.btn-edit-prof').forEach(btn => {
     btn.addEventListener('click', async () => {
       const prof = await DB.Profesor.buscarPorDNI(btn.dataset.dni);
       mostrarFormProfesor(prof, deportesList);
     });
   });
-
+//Reset de boton de confirmación
   content.querySelectorAll('.btn-del-prof').forEach(btn => {
     btn.addEventListener('click', () => {
       const modal = document.getElementById('modal-admin-eliminar');
@@ -1533,6 +1554,7 @@ async function renderAdminProfesores() {
       const btnC = document.getElementById('btn-admin-confirm-eliminar');
       const nuevoBtn = btnC.cloneNode(true);
       btnC.parentNode.replaceChild(nuevoBtn, btnC);
+      // Acción al confirmar
       nuevoBtn.addEventListener('click', async () => {
         await DB.Profesor.eliminar(btn.dataset.dni);
         toggle(modal, false);
@@ -1543,12 +1565,14 @@ async function renderAdminProfesores() {
   });
 }
 /**
- * muestra el formulario del profesor para crear o editar un profesor
+ * Muestra el formulario para crear o editar un profesor.
+ * @param {object|null} prof - Profesor existente (modo edición) o null (modo creación).
+ * @param {Array} deportesList - Lista de deportes para el selector.
  */
 function mostrarFormProfesor(prof, deportesList) {
   const formEl = document.getElementById('form-profesor');
   const esNuevo = !prof;
-
+ // Renderizar el formulario dinámicamente
   formEl.innerHTML = `
     <div class="admin-form-inner">
       <h4>${esNuevo ? 'Nuevo profesor' : 'Editar: ' + prof.Nombre}</h4>
@@ -1570,37 +1594,38 @@ function mostrarFormProfesor(prof, deportesList) {
         <button class="btn-ghost" id="btn-cancelar-form-prof">Cancelar</button>
       </div>
     </div>`;
-
+//Mostrar formulario
   formEl.classList.remove('hidden');
-
+// Botón cancelar
   document.getElementById('btn-cancelar-form-prof').addEventListener('click', () => formEl.classList.add('hidden'));
-
+// Botón modificaciónes y guardado del profesor
   document.getElementById('btn-guardar-prof').addEventListener('click', async () => {
     const btn = document.getElementById('btn-guardar-prof');
     const errEl = document.getElementById('form-prof-error');
     errEl.classList.add('hidden');
     btn.disabled = true; btn.textContent = 'Guardando…';
-
+ // Recoger datos del formulario
     const datos = {
       Nombre: document.getElementById('prof-nombre').value.trim(),
       Especialidad: document.getElementById('prof-especialidad').value,
       Email: document.getElementById('prof-email').value.trim(),
       Telefono: document.getElementById('prof-tel').value.trim(),
     };
-
+// Validación del nombre
     if (!datos.Nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = esNuevo ? 'Crear profesor' : 'Guardar cambios'; return; }
-
+ // Crear o actualizar según el estado
     let resultado;
     if (esNuevo) {
       const dni = document.getElementById('prof-dni').value.trim().toUpperCase();
+      // Validación del DNI
       if (!/^[0-9]{8}[A-Za-z]$/.test(dni)) { errEl.textContent = 'DNI inválido (ej: 12345678A).'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Crear profesor'; return; }
       resultado = await DB.Profesor.crear({ PRO_DNI: dni, ...datos });
     } else {
       resultado = await DB.Profesor.actualizar(prof.PRO_DNI, datos);
     }
-
+ // Restaurar botón
     btn.disabled = false; btn.textContent = esNuevo ? 'Crear profesor' : 'Guardar cambios';
-
+// Mostrar error si la BD falló
     if (!resultado.ok) { errEl.textContent = resultado.error; errEl.classList.remove('hidden'); return; }
 
     mostrarToast(esNuevo ? '¡Profesor creado!' : '¡Profesor actualizado!', 'success');
@@ -1612,7 +1637,9 @@ function mostrarFormProfesor(prof, deportesList) {
  * Renderiza la tabla de clases en el panel admin con opciones de crear, editar y eliminar
  */
 async function renderAdminClases() {
+  // Contenedor principal
   const content = document.getElementById('admin-content');
+  //Cargar datos de clases, profesores, categorías y deportes desde la base de datos
   const clases = await DB.Clases.listarTodas();
   const profesores = await DB.Profesor.listarTodos();
   const categorias = await DB.Categoria.listarTodas();
@@ -1652,18 +1679,18 @@ async function renderAdminClases() {
           </table>`
     }
     </div>`;
-
+// Crear clase
   document.getElementById('btn-nueva-clase').addEventListener('click', () => {
     mostrarFormClase(null, deportesList, profesores, categorias);
   });
-
+  // Editar clase
   content.querySelectorAll('.btn-edit-clase').forEach(btn => {
     btn.addEventListener('click', async () => {
       const clase = await DB.Clases.buscarPorId(btn.dataset.id);
       mostrarFormClase(clase, deportesList, profesores, categorias);
     });
   });
-
+// Eliminar clase
   content.querySelectorAll('.btn-del-clase').forEach(btn => {
     btn.addEventListener('click', () => {
       const modal = document.getElementById('modal-admin-eliminar');
@@ -1683,17 +1710,25 @@ async function renderAdminClases() {
     });
   });
 }
-
+/**
+ * Muestra el formulario para crear o editar una clase.
+ * @param {object|null} clase - Clase existente (modo edición) o null (modo creación).
+ * @param {Array} deportesList - Lista de deportes disponibles.
+ * @param {Array} profesores - Lista completa de profesores.
+ * @param {Array} categorias - Lista completa de categorías.
+ */
 function mostrarFormClase(clase, deportesList, profesores, categorias) {
+  // Si no hay clase pasa a creación
   const formEl = document.getElementById('form-clase');
   const esNuevo = !clase;
 
+ // Funciones auxiliares para filtrar profesores y categorías según el deporte
   const profesoresFiltrados = (depId) =>
     profesores.filter(p => !depId || p.Especialidad === depId);
 
   const categoriasFiltradas = (depId) =>
     categorias.filter(c => !depId || c.Deporte === depId);
-
+// Renderizar el formulario dinámicamente
   formEl.innerHTML = `
     <div class="admin-form-inner">
       <h4>${esNuevo ? 'Nueva clase' : 'Editar clase'}</h4>
@@ -1736,20 +1771,22 @@ function mostrarFormClase(clase, deportesList, profesores, categorias) {
     const depId = e.target.value;
     const selProf = document.getElementById('clase-profesor');
     const selCat = document.getElementById('clase-categoria');
+    // Actualizar profesores
     selProf.innerHTML = `<option value="">Sin asignar</option>` +
       profesoresFiltrados(depId).map(p => `<option value="${p.PRO_DNI}">${p.Nombre}</option>`).join('');
-    selCat.innerHTML = `<option value="">Sin categoría</option>` +
+    // Actualizar categorías
+      selCat.innerHTML = `<option value="">Sin categoría</option>` +
       categoriasFiltradas(depId).map(c => `<option value="${c.id}">${c.Nombre} (${c.EdadMin}-${c.EdadMax} años)</option>`).join('');
   });
-
+// Botón cancelar 
   document.getElementById('btn-cancelar-form-clase').addEventListener('click', () => formEl.classList.add('hidden'));
-
+//Boton de guardado
   document.getElementById('btn-guardar-clase').addEventListener('click', async () => {
     const btn = document.getElementById('btn-guardar-clase');
     const errEl = document.getElementById('form-clase-error');
     errEl.classList.add('hidden');
     btn.disabled = true; btn.textContent = 'Guardando…';
-
+// Recoger datos del formulario
     const datos = {
       Deporte: document.getElementById('clase-deporte').value,
       Descripcion: document.getElementById('clase-desc').value.trim(),
@@ -1758,14 +1795,14 @@ function mostrarFormClase(clase, deportesList, profesores, categorias) {
       PRO_DNI: document.getElementById('clase-profesor').value || null,
       Categoria: document.getElementById('clase-categoria').value || '',
     };
-
+// Validación básica
     if (!datos.Deporte || !datos.Descripcion || !datos.Horario || !datos.Pista) {
       errEl.textContent = 'Deporte, descripción, horario y pista son obligatorios.';
       errEl.classList.remove('hidden');
       btn.disabled = false; btn.textContent = esNuevo ? 'Crear clase' : 'Guardar cambios';
       return;
     }
-
+// Crear o actualizar según el modo
     const resultado = esNuevo
       ? await DB.Clases.crear(datos)
       : await DB.Clases.actualizar(clase.id, datos);
@@ -1780,28 +1817,37 @@ function mostrarFormClase(clase, deportesList, profesores, categorias) {
 }
 
 /* --- ADMIN: HORARIOS --- */
+/**
+ * Renderiza la vista de horarios semanales del panel admin.
+ */
 async function renderAdminHorarios() {
   const content = document.getElementById('admin-content');
+
+  // Cargar configuración y datos necesarios
   await cargarDeportesConfig();
   const deportesList = Object.entries(DEPORTES_CONFIG);
   const profesores = await DB.Profesor.listarTodos();
   const todasClases = await DB.Clases.listarTodas();
-
+/**
+   * Genera la tabla del horario según el deporte seleccionado.
+   * @param {string} filtroDeporte - Clave del deporte o vacío para todos.
+   */
   const renderVista = async (filtroDeporte) => {
+    // Filtrar clases por deporte
     const clases = filtroDeporte
       ? todasClases.filter(c => c.Deporte === filtroDeporte)
       : todasClases;
-
+// Extraer horas únicas
     const horasSet = new Set();
     clases.forEach(c => {
       const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
       if (match) horasSet.add(match[0]);
     });
     const horas = [...horasSet].sort();
-
+//Crear la estructura de dia/hora/clases
     const mapa = {};
     DIAS_SEMANA.forEach(d => { mapa[d] = {}; horas.forEach(h => { mapa[d][h] = []; }); });
-
+ // Rellenar el mapa con las clases
     for (const c of clases) {
       const cfg = DEPORTES_CONFIG[c.Deporte] || {};
       const prof = profesores.find(p => p.PRO_DNI === c.PRO_DNI);
@@ -1817,7 +1863,7 @@ async function renderAdminHorarios() {
         }
       });
     }
-
+// Generar HTML de la tabla
     return `
       <div class="horario-scroll">
         <table class="horario-table">
@@ -1851,9 +1897,9 @@ async function renderAdminHorarios() {
         </table>
       </div>`;
   };
-
+// Renderizar vista inicial (sin filtros)
   const vistaHTML = await renderVista('');
-
+// Construcción del HTML principal
   content.innerHTML = `
     <div class="admin-section-header">
       <h3 class="admin-section-title">🗓️ Horario Semanal</h3>
@@ -1866,7 +1912,7 @@ async function renderAdminHorarios() {
       </div>
     </div>
     <div id="admin-horario-vista">${vistaHTML}</div>`;
-
+  // Listener del filtro por deporte
   document.getElementById('admin-horario-filtro').addEventListener('change', async (e) => {
     document.getElementById('admin-horario-vista').innerHTML = '<div class="admin-loading">Cargando…</div>';
     document.getElementById('admin-horario-vista').innerHTML = await renderVista(e.target.value);
