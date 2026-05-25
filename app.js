@@ -140,9 +140,38 @@ async function navegarA(pagina) {
 document.querySelectorAll('.nav-link').forEach(link => {
   link.addEventListener('click', (e) => {
     e.preventDefault();
+    cerrarSidebar();
     navegarA(link.dataset.page);
   });
 });
+
+/* ============================================================
+   SIDEBAR — abrir / cerrar
+   ============================================================ */
+/**
+ * Abre el sidebar lateral de navegación.
+ */
+function abrirSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.add('sidebar--open');
+  overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+/**
+ * Cierra el sidebar lateral de navegación.
+ */
+function cerrarSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.remove('sidebar--open');
+  overlay.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('btn-sidebar-toggle').addEventListener('click', abrirSidebar);
+document.getElementById('btn-sidebar-close').addEventListener('click', cerrarSidebar);
+document.getElementById('sidebar-overlay').addEventListener('click', cerrarSidebar);
 
 /* ============================================================
    DASHBOARD
@@ -2080,6 +2109,7 @@ window.App = {
     document.getElementById('page-auth').classList.add('hidden');
     // Muestra barra de navegación, nombre de usuario y las iniciales del usuario
     document.getElementById('navbar').classList.remove('hidden');
+    document.getElementById('sidebar').classList.remove('hidden-nav');
     document.getElementById('nav-username').textContent = usuario.Nombre.split(' ')[0];
     document.getElementById('avatar-initials').textContent = iniciales(usuario.Nombre);
 
@@ -2127,6 +2157,8 @@ window.App = {
     } else {
       // Sin sesión: mostrar el formulario de login
       document.getElementById('navbar').classList.add('hidden');
+      document.getElementById('sidebar').classList.add('hidden-nav');
+      cerrarSidebar();
       pageAuth.classList.remove('hidden');
       document.querySelectorAll('.page:not(#page-auth)').forEach(p => p.classList.add('hidden'));
     }
