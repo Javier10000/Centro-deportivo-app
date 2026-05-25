@@ -936,6 +936,105 @@ code { font-family: monospace; background: var(--clr-surface2); padding: 2px 6px
 /* ============================================================
    HORARIOS
    ============================================================ */
+   /* ============================================================
+   SELECTOR DE DEPORTES CON BUSCADOR Y CHECKBOXES (form categoría)
+   ============================================================ */
+
+.cat-deporte-buscador {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cat-deporte-buscar-input {
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  color: var(--clr-text);
+  padding: 9px 14px;
+  outline: none;
+  transition: var(--transition);
+  width: 100%;
+}
+
+.cat-deporte-buscar-input:focus {
+  border-color: rgba(232,255,71,0.5);
+  box-shadow: 0 0 0 3px rgba(232,255,71,0.07);
+}
+
+.cat-deporte-buscar-input::placeholder { color: var(--clr-muted); }
+
+.cat-deporte-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--clr-border) transparent;
+}
+
+.cat-deporte-lista::-webkit-scrollbar { width: 4px; }
+.cat-deporte-lista::-webkit-scrollbar-track { background: transparent; }
+.cat-deporte-lista::-webkit-scrollbar-thumb { background: var(--clr-border); border-radius: 4px; }
+
+.cat-deporte-opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.cat-deporte-opcion:hover { background: var(--clr-surface2); }
+
+.cat-deporte-opcion input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--clr-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cat-deporte-opcion-icon { font-size: 18px; line-height: 1; }
+
+.cat-deporte-opcion-nombre {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--clr-text);
+}
+
+.cat-deporte-seleccionados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+  align-items: center;
+}
+
+.cat-deporte-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(232,255,71,0.1);
+  border: 1px solid rgba(232,255,71,0.3);
+  color: var(--clr-accent);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cat-deporte-field {
+  grid-column: 1 / -1;
+}
 .horarios-filtros {
   margin-bottom: 1.5rem;
 }

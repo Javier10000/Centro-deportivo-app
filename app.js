@@ -1424,7 +1424,8 @@ async function renderAdminCategorias() {
   });
 }
 /**
- * Muestra el formulario inline para crear o editar una categoría
+ * Muestra el formulario inline para crear o editar una categoría.
+ * En modo creación permite buscar y seleccionar varios deportes a la vez.
  * @param {object|null} cat Categoría a editar, o null para crear una nueva
  * @param {Array} deportesList Lista de deportes disponibles para el selector
  */
@@ -1433,17 +1434,45 @@ function mostrarFormCategoria(cat, deportesList) {
   const formEl = document.getElementById('form-categoria');
   const esNuevo = !cat;
 
+  // En modo edición se mantiene el select simple de un único deporte.
+  // En modo creación se muestra el buscador con checkboxes para selección múltiple.
+  const selectorDeporteHTML = esNuevo
+    ? `<div class="field cat-deporte-field" style="grid-column:1/-1">
+        <label>Deportes <span style="color:var(--clr-muted);font-weight:400;font-size:11px">(selecciona uno o varios)</span></label>
+        <div class="cat-deporte-buscador">
+          <input
+            type="text"
+            id="cat-deporte-buscar"
+            class="cat-deporte-buscar-input"
+            placeholder="Escribe para filtrar deportes…"
+            autocomplete="off"
+          />
+          <div class="cat-deporte-lista" id="cat-deporte-lista">
+            ${deportesList.map(([key, cfg]) => `
+              <label class="cat-deporte-opcion" data-key="${key}" data-label="${cfg.label.toLowerCase()}">
+                <input type="checkbox" class="cat-deporte-check" value="${key}" />
+                <span class="cat-deporte-opcion-icon">${cfg.icon}</span>
+                <span class="cat-deporte-opcion-nombre">${cfg.label}</span>
+              </label>`).join('')}
+          </div>
+          <div class="cat-deporte-seleccionados" id="cat-deporte-seleccionados">
+            <span style="color:var(--clr-muted);font-size:12px">Ningún deporte seleccionado</span>
+          </div>
+        </div>
+      </div>`
+    : `<div class="field">
+        <label>Deporte</label>
+        <select id="cat-deporte">
+          ${deportesList.map(([key, cfg]) => `<option value="${key}" ${cat?.Deporte === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>`).join('')}
+        </select>
+      </div>`;
+
   formEl.innerHTML = `
     <div class="admin-form-inner">
       <h4>${esNuevo ? 'Nueva categoría' : 'Editar: ' + cat.Nombre}</h4>
       <div class="admin-form-grid">
         <div class="field"><label>Nombre</label><input id="cat-nombre" type="text" placeholder="Ej: Alevín" value="${cat?.Nombre || ''}" /></div>
-        <div class="field">
-          <label>Deporte</label>
-          <select id="cat-deporte">
-            ${deportesList.map(([key, cfg]) => `<option value="${key}" ${cat?.Deporte === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>`).join('')}
-          </select>
-        </div>
+        ${selectorDeporteHTML}
         <div class="field"><label>Edad mínima</label><input id="cat-edad-min" type="number" min="0" max="99" value="${cat?.EdadMin ?? 0}" /></div>
         <div class="field"><label>Edad máxima</label><input id="cat-edad-max" type="number" min="0" max="99" value="${cat?.EdadMax ?? 18}" /></div>
       </div>
@@ -1453,37 +1482,111 @@ function mostrarFormCategoria(cat, deportesList) {
         <button class="btn-ghost" id="btn-cancelar-form-cat">Cancelar</button>
       </div>
     </div>`;
-//Mostrar el formulario
+
+  //Mostrar el formulario
   formEl.classList.remove('hidden');
-//Boton de cancelar formulario
+
+  // Lógica del buscador + checkboxes (solo en modo creación)
+  if (esNuevo) {
+    const inputBuscar = document.getElementById('cat-deporte-buscar');
+    const listaEl = document.getElementById('cat-deporte-lista');
+    const seleccionadosEl = document.getElementById('cat-deporte-seleccionados');
+
+    // Filtra las opciones visibles según el texto escrito en el buscador
+    inputBuscar.addEventListener('input', () => {
+      const filtro = inputBuscar.value.toLowerCase().trim();
+      listaEl.querySelectorAll('.cat-deporte-opcion').forEach(opcion => {
+        const coincide = opcion.dataset.label.includes(filtro);
+        opcion.style.display = coincide ? '' : 'none';
+      });
+    });
+
+    // Actualiza el resumen de deportes seleccionados cuando cambia un checkbox
+    listaEl.addEventListener('change', () => {
+      const checks = [...listaEl.querySelectorAll('.cat-deporte-check:checked')];
+      if (checks.length === 0) {
+        seleccionadosEl.innerHTML = '<span style="color:var(--clr-muted);font-size:12px">Ningún deporte seleccionado</span>';
+      } else {
+        seleccionadosEl.innerHTML = checks.map(ch => {
+          const cfg = DEPORTES_CONFIG[ch.value] || {};
+          return `<span class="cat-deporte-tag">${cfg.icon || ''} ${cfg.label || ch.value}</span>`;
+        }).join('');
+      }
+    });
+  }
+
+  //Boton de cancelar formulario
   document.getElementById('btn-cancelar-form-cat').addEventListener('click', () => formEl.classList.add('hidden'));
-//Boton para guardar o actualizar categorias
+
+  //Boton para guardar o actualizar categorias
   document.getElementById('btn-guardar-cat').addEventListener('click', async () => {
     const btn = document.getElementById('btn-guardar-cat');
     const errEl = document.getElementById('form-cat-error');
     errEl.classList.add('hidden');
-//Guarda los datos del formulario
-    const datos = {
-      Nombre: document.getElementById('cat-nombre').value.trim(),
-      Deporte: document.getElementById('cat-deporte').value,
-      EdadMin: parseInt(document.getElementById('cat-edad-min').value),
-      EdadMax: parseInt(document.getElementById('cat-edad-max').value),
-    };
-//Validaciones
-    if (!datos.Nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.classList.remove('hidden'); return; }
-    if (datos.EdadMin > datos.EdadMax) { errEl.textContent = 'La edad mínima no puede ser mayor que la máxima.'; errEl.classList.remove('hidden'); return; }
-//Bloquear Botón mientras guarda
-    btn.disabled = true; btn.textContent = 'Guardando…';
-//Crea o actualiza según el modo
-    const resultado = esNuevo
-      ? await DB.Categoria.crear(datos)
-      : await DB.Categoria.actualizar(cat.id, datos);
-//Restaura el boton
-    btn.disabled = false; btn.textContent = esNuevo ? 'Crear categoría' : 'Guardar cambios';
-//Mostrar mensaje si falla la conexion con la base de datos
-    if (!resultado.ok) { errEl.textContent = resultado.error; errEl.classList.remove('hidden'); return; }
 
-    mostrarToast(esNuevo ? '¡Categoría creada!' : '¡Categoría actualizada!', 'success');
+    //Recoge los datos comunes del formulario
+    const nombre = document.getElementById('cat-nombre').value.trim();
+    const edadMin = parseInt(document.getElementById('cat-edad-min').value);
+    const edadMax = parseInt(document.getElementById('cat-edad-max').value);
+
+    //Validaciones comunes
+    if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.classList.remove('hidden'); return; }
+    if (edadMin > edadMax) { errEl.textContent = 'La edad mínima no puede ser mayor que la máxima.'; errEl.classList.remove('hidden'); return; }
+
+    if (esNuevo) {
+      // Recoge los deportes seleccionados mediante checkboxes
+      const deportesSeleccionados = [
+        ...document.querySelectorAll('.cat-deporte-check:checked')
+      ].map(ch => ch.value);
+
+      if (deportesSeleccionados.length === 0) {
+        errEl.textContent = 'Selecciona al menos un deporte.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      //Bloquear botón mientras guarda
+      btn.disabled = true; btn.textContent = 'Guardando…';
+
+      // Crea una categoría por cada deporte seleccionado
+      let errores = [];
+      for (const deporte of deportesSeleccionados) {
+        const resultado = await DB.Categoria.crear({ Nombre: nombre, Deporte: deporte, EdadMin: edadMin, EdadMax: edadMax });
+        if (!resultado.ok) errores.push(`${DEPORTES_CONFIG[deporte]?.label || deporte}: ${resultado.error}`);
+      }
+
+      btn.disabled = false; btn.textContent = 'Crear categoría';
+
+      if (errores.length > 0) {
+        errEl.textContent = 'Algunos deportes fallaron: ' + errores.join(' · ');
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      mostrarToast(
+        deportesSeleccionados.length === 1
+          ? '¡Categoría creada!'
+          : `¡${deportesSeleccionados.length} categorías creadas!`,
+        'success'
+      );
+    } else {
+      // Modo edición: un único deporte
+      const deporte = document.getElementById('cat-deporte').value;
+      const datos = { Nombre: nombre, Deporte: deporte, EdadMin: edadMin, EdadMax: edadMax };
+
+      //Bloquear botón mientras guarda
+      btn.disabled = true; btn.textContent = 'Guardando…';
+
+      const resultado = await DB.Categoria.actualizar(cat.id, datos);
+
+      btn.disabled = false; btn.textContent = 'Guardar cambios';
+
+      //Mostrar mensaje si falla la conexion con la base de datos
+      if (!resultado.ok) { errEl.textContent = resultado.error; errEl.classList.remove('hidden'); return; }
+
+      mostrarToast('¡Categoría actualizada!', 'success');
+    }
+
     await renderAdminCategorias();
   });
 }
