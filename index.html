@@ -20,17 +20,14 @@
 
   <!-- ========== NAVBAR ========== -->
   <nav id="navbar" class="navbar hidden">
+    <button id="btn-sidebar-toggle" class="btn-sidebar-toggle" title="Menú de navegación">
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+    </button>
     <div class="nav-brand">
       <span class="brand-icon">⬡</span>
       <span class="brand-name">ELITE<span class="brand-accent">SPORT</span></span>
-    </div>
-    <div class="nav-links">
-      <a href="#" class="nav-link active" data-page="dashboard">Inicio</a>
-      <a href="#" class="nav-link" data-page="deportes">Deportes</a>
-      <a href="#" class="nav-link" data-page="reservas">Reservas</a>
-      <a href="#" class="nav-link" data-page="horarios">Horarios</a>
-      <a href="#" class="nav-link" data-page="suscripciones">Suscripciones</a>
-      <a href="#" class="nav-link nav-link--admin hidden" id="nav-admin-link" data-page="admin">⚙ Admin</a>
     </div>
     <div class="nav-user">
       <span id="nav-username" class="nav-username"></span>
@@ -40,6 +37,42 @@
       <button id="btn-logout" class="btn-logout" title="Cerrar sesión">✕</button>
     </div>
   </nav>
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside id="sidebar" class="sidebar hidden-nav">
+    <div class="sidebar-header">
+      <span class="sidebar-brand-icon">⬡</span>
+      <span class="sidebar-brand-name">ELITE<span class="brand-accent">SPORT</span></span>
+      <button id="btn-sidebar-close" class="btn-sidebar-close" title="Cerrar menú">✕</button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-link active" data-page="dashboard">
+        <span class="nav-link-icon">🏠</span>
+        <span class="nav-link-label">Inicio</span>
+      </a>
+      <a href="#" class="nav-link" data-page="deportes">
+        <span class="nav-link-icon">🏅</span>
+        <span class="nav-link-label">Deportes</span>
+      </a>
+      <a href="#" class="nav-link" data-page="reservas">
+        <span class="nav-link-icon">📅</span>
+        <span class="nav-link-label">Reservas</span>
+      </a>
+      <a href="#" class="nav-link" data-page="horarios">
+        <span class="nav-link-icon">🕐</span>
+        <span class="nav-link-label">Horarios</span>
+      </a>
+      <a href="#" class="nav-link" data-page="suscripciones">
+        <span class="nav-link-icon">⭐</span>
+        <span class="nav-link-label">Suscripciones</span>
+      </a>
+      <a href="#" class="nav-link nav-link--admin hidden" id="nav-admin-link" data-page="admin">
+        <span class="nav-link-icon">⚙</span>
+        <span class="nav-link-label">Admin</span>
+      </a>
+    </nav>
+  </aside>
+  <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
 
   <!-- ========== MAIN WRAPPER ========== -->
   <main id="app-root">
