@@ -103,8 +103,69 @@ async function cargarDeportesConfig() {
 }
 
 /* ============================================================
-   NAVEGACIÓN
+   SIDEBAR — CATEGORÍAS
    ============================================================ */
+/**
+ * Carga y renderiza las categorías en la barra lateral agrupadas por deporte.
+ * Muestra para cada categoría su nombre, rango de edad y el deporte al que pertenece.
+ * @returns {Promise<void>} No devuelve valor; actualiza el DOM directamente.
+ */
+async function renderSidebarCategorias() {
+  // Contenedor de la lista en el sidebar
+  const lista = document.getElementById('sidebar-categorias-lista');
+  if (!lista) return;
+
+  // Asegurar que la config de deportes esté cargada
+  if (Object.keys(DEPORTES_CONFIG).length === 0) {
+    await cargarDeportesConfig();
+  }
+
+  // Obtener todas las categorías de la base de datos
+  const categorias = await DB.Categoria.listarTodas();
+
+  if (categorias.length === 0) {
+    lista.innerHTML = '<div class="sidebar-cat-empty">Sin categorías definidas</div>';
+    return;
+  }
+
+  // Agrupar categorías por deporte
+  const porDeporte = {};
+  categorias.forEach(cat => {
+    const key = cat.Deporte || '_sin_deporte';
+    if (!porDeporte[key]) porDeporte[key] = [];
+    porDeporte[key].push(cat);
+  });
+
+  // Ordenar cada grupo por edad mínima
+  Object.values(porDeporte).forEach(grupo =>
+    grupo.sort((a, b) => a.EdadMin - b.EdadMin)
+  );
+
+  // Construir HTML agrupado por deporte
+  lista.innerHTML = Object.entries(porDeporte).map(([depKey, cats]) => {
+    const cfg = DEPORTES_CONFIG[depKey] || {};
+    const deporteLabel = cfg.label || depKey;
+    const deporteIcon = cfg.icon || '🏅';
+    const deporteColor = cfg.color || 'var(--clr-accent)';
+
+    return `
+      <div class="sidebar-cat-grupo">
+        <div class="sidebar-cat-deporte-header" style="--dep-color:${deporteColor}">
+          <span class="sidebar-cat-deporte-icon">${deporteIcon}</span>
+          <span class="sidebar-cat-deporte-nombre">${deporteLabel}</span>
+        </div>
+        <ul class="sidebar-cat-items">
+          ${cats.map(cat => `
+            <li class="sidebar-cat-item">
+              <span class="sidebar-cat-nombre">${cat.Nombre}</span>
+              <span class="sidebar-cat-edad">${cat.EdadMin}–${cat.EdadMax} años</span>
+            </li>`).join('')}
+        </ul>
+      </div>`;
+  }).join('');
+}
+
+
 //Array con todas las paginas disponibles en la web
 const PAGINAS = ['dashboard', 'deportes', 'reservas', 'horarios', 'suscripciones', 'admin'];
 /**
@@ -1448,6 +1509,7 @@ async function renderAdminCategorias() {
         toggle(modal, false);
         mostrarToast('Categoría eliminada.', 'success');
         await renderAdminCategorias();
+        await renderSidebarCategorias();
       });
     });
   });
@@ -1617,6 +1679,7 @@ function mostrarFormCategoria(cat, deportesList) {
     }
 
     await renderAdminCategorias();
+    await renderSidebarCategorias();
   });
 }
 
@@ -2124,6 +2187,7 @@ window.App = {
     }
 
     await cargarDeportesConfig();
+    await renderSidebarCategorias();
     await navegarA('dashboard'); // <--- AHORA NAVEGA A dashboard
   }
 };

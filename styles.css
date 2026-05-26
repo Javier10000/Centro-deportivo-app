@@ -1319,3 +1319,125 @@ code { font-family: monospace; background: var(--clr-surface2); padding: 0.125re
 @media (max-width: 768px) {
   .panel-tercero-grid { grid-template-columns: 1fr; }
 }
+/* ============================================================
+   SIDEBAR — CATEGORÍAS
+   ============================================================ */
+
+.sidebar-categorias {
+  margin-top: auto;
+  padding: 1rem 0.75rem 1.25rem;
+  border-top: 1px solid var(--clr-border);
+}
+
+.sidebar-categorias-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sidebar-categorias-icon {
+  font-size: 1rem;
+}
+
+.sidebar-categorias-title {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--clr-muted);
+}
+
+.sidebar-categorias-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--clr-border) transparent;
+}
+
+.sidebar-cat-loading,
+.sidebar-cat-empty {
+  font-size: 0.75rem;
+  color: var(--clr-muted);
+  padding: 0.25rem 0;
+}
+
+/* Grupo por deporte */
+.sidebar-cat-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-cat-deporte-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--dep-color, var(--clr-accent)) 12%, transparent);
+  border-left: 2px solid var(--dep-color, var(--clr-accent));
+}
+
+.sidebar-cat-deporte-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.sidebar-cat-deporte-nombre {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--dep-color, var(--clr-accent));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Lista de categorías del deporte */
+.sidebar-cat-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.sidebar-cat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.2rem 0.5rem 0.2rem 1rem;
+  border-radius: 0.25rem;
+  transition: background 0.15s;
+}
+
+.sidebar-cat-item:hover {
+  background: var(--clr-surface2);
+}
+
+.sidebar-cat-nombre {
+  font-size: 0.72rem;
+  color: var(--clr-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-cat-edad {
+  font-size: 0.68rem;
+  color: var(--clr-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--clr-surface2);
+  border: 1px solid var(--clr-border);
+  border-radius: 0.75rem;
+  padding: 0.05rem 0.4rem;
+}
