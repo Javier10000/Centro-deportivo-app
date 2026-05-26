@@ -217,8 +217,8 @@ code { font-family: monospace; background: var(--clr-surface2); padding: 0.125re
 }
 .sidebar-overlay.hidden { display: none; }
 
-.nav-user { display: flex; align-items: center; gap: 0.625rem; }
-.nav-username { font-size: 0.8125rem; color: var(--clr-muted); max-width: 8.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-user { display: flex; align-items: center; gap: 0.625rem; margin-left: auto; flex-shrink: 0;}
+.nav-username { font-size: 0.8125rem; color: var(--clr-muted); max-width: 8.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: auto; flex-shrink: 0;}
 .btn-avatar {
   width: 2.25rem; height: 2.25rem;
   background: var(--clr-surface2);
