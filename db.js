@@ -56,6 +56,15 @@ const DB = (() => {
       const snap = await db.collection('Usuario').get();
       return snap.docs.map(d => d.data());
     },
+    // Actualiza los datos editables del usuario (Nombre, F_Nacimiento y opcionalmente FotoURL)
+    async actualizar(dni, { Nombre, F_Nacimiento, FotoURL }) {
+      const datos = {};
+      if (Nombre !== undefined) datos.Nombre = Nombre;
+      if (F_Nacimiento !== undefined) datos.F_Nacimiento = F_Nacimiento;
+      if (FotoURL !== undefined) datos.FotoURL = FotoURL;
+      await db.collection('Usuario').doc(dni).update(datos);
+      return { ok: true };
+    },
   };
 
   /* Esta primera función sirve para inicializar una subcripción y comprobar a q deportes esta suscrito el usuario*/

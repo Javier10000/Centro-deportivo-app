@@ -1085,50 +1085,107 @@ document.getElementById('close-modal-cancelar').addEventListener('click', () => 
 /* ============================================================
    PERFIL
    ============================================================ */
-/**
- * Listener para abrir el perfil de usuario y carga los datos del usuario junto a sus suscripciones activas
- */
-document.getElementById('btn-perfil').addEventListener('click', async () => {
-  // Obtiene el usuario actual autorizado
-  const usuario = await Auth.usuarioActual();
-  // Si no se encuentra no carga nada
-  if (!usuario) return;
-  // Obtención de suscripciones activas
-  const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
-  const activas = subs.filter(s => s.Estado === 'activa');
 
+/**
+ * Convierte un File de imagen a base64 data-URL para previsualización local.
+ * @param {File} file
+ * @returns {Promise<string>}
+ */
+function fileADataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Renderiza el contenido del modal de perfil con las opciones de edición de foto,
+ * nombre y fecha de nacimiento.
+ * @param {Object} usuario - Datos del usuario actual.
+ * @param {Array} activas - Lista de suscripciones activas del usuario.
+ */
+function renderizarPerfil(usuario, activas) {
   const rolBadge = usuario.Rol === 'admin'
     ? `<span style="background:rgba(232,255,71,0.15);border:1px solid rgba(232,255,71,0.4);color:var(--clr-accent);
                     font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.5px">ADMIN</span>`
     : '';
-  // Rellena el perfil con los datos del usuario
+
+  // Avatar: foto si existe, si no iniciales
+  const avatarContent = usuario.FotoURL
+    ? `<img src="${usuario.FotoURL}" alt="Foto de perfil"
+            style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : iniciales(usuario.Nombre);
+
+  // Rellena el perfil con los datos del usuario e incluye controles de edición
   document.getElementById('perfil-body').innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.5rem">
-      <div style="width:56px;height:56px;border-radius:50%;background:rgba(232,255,71,0.1);
-                  border:1px solid rgba(232,255,71,0.3);display:flex;align-items:center;
-                  justify-content:center;font-family:var(--font-display);font-size:20px;
-                  font-weight:700;color:var(--clr-accent)">
-        ${iniciales(usuario.Nombre)}
+      <!-- Avatar clicable para cambiar foto -->
+      <div id="perfil-avatar-wrap" title="Cambiar foto de perfil"
+           style="position:relative;width:56px;height:56px;flex-shrink:0;cursor:pointer">
+        <div id="perfil-avatar" style="width:56px;height:56px;border-radius:50%;
+                    background:rgba(232,255,71,0.1);border:1px solid rgba(232,255,71,0.3);
+                    display:flex;align-items:center;justify-content:center;
+                    font-family:var(--font-display);font-size:20px;font-weight:700;
+                    color:var(--clr-accent);overflow:hidden">
+          ${avatarContent}
+        </div>
+        <!-- Overlay de cámara al hacer hover -->
+        <div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0.55);
+                    display:flex;align-items:center;justify-content:center;opacity:0;
+                    transition:opacity .2s;pointer-events:none" id="perfil-avatar-overlay">
+          <span style="font-size:18px">📷</span>
+        </div>
+        <!-- Input oculto de fichero -->
+        <input type="file" id="perfil-foto-input" accept="image/*"
+               style="position:absolute;inset:0;opacity:0;cursor:pointer;border-radius:50%">
       </div>
       <div>
-        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;
+                    display:flex;align-items:center;gap:8px">
           ${usuario.Nombre} ${rolBadge}
         </div>
         <div style="font-size:12px;color:var(--clr-muted)">${usuario.Correo}</div>
       </div>
     </div>
+
+    <!-- Mensaje de estado para guardar cambios -->
+    <div id="perfil-msg" class="msg-success hidden" style="margin-bottom:1rem"></div>
+    <div id="perfil-err" class="msg-error hidden" style="margin-bottom:1rem"></div>
+
     <div class="perfil-field">
       <div class="perfil-label">DNI</div>
       <div class="perfil-value">${usuario.US_DNI}</div>
     </div>
-    <div class="perfil-field">
-      <div class="perfil-label">Fecha de nacimiento</div>
-      <div class="perfil-value">${formatFechaSola(usuario.F_Nacimiento)}</div>
+
+    <!-- Nombre editable -->
+    <div class="perfil-field" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div class="perfil-label">Nombre</div>
+      <div style="display:flex;gap:8px;width:100%;align-items:center">
+        <input id="perfil-nombre-input" type="text" value="${usuario.Nombre}"
+               style="flex:1;background:var(--clr-surface2);border:1px solid var(--clr-border);
+                      border-radius:8px;padding:7px 12px;color:var(--clr-text);font-size:14px;
+                      font-family:var(--font-body);outline:none"
+               placeholder="Nombre completo">
+      </div>
     </div>
+
+    <!-- Fecha de nacimiento editable -->
+    <div class="perfil-field" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div class="perfil-label">Fecha de nacimiento</div>
+      <input id="perfil-fnac-input" type="date" value="${usuario.F_Nacimiento || ''}"
+             style="background:var(--clr-surface2);border:1px solid var(--clr-border);
+                    border-radius:8px;padding:7px 12px;color:var(--clr-text);font-size:14px;
+                    font-family:var(--font-body);outline:none;width:100%;box-sizing:border-box"
+             max="${new Date().toISOString().split('T')[0]}">
+    </div>
+
     <div class="perfil-field">
       <div class="perfil-label">Rol</div>
       <div class="perfil-value" style="text-transform:capitalize">${usuario.Rol || 'predeterminado'}</div>
     </div>
+
     <div class="perfil-field">
       <div class="perfil-label">Suscripciones activas</div>
       <div class="perfil-value">
@@ -1145,18 +1202,128 @@ document.getElementById('btn-perfil').addEventListener('click', async () => {
     }
       </div>
     </div>
-    <div style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid var(--clr-border)">
+
+    <!-- Botón guardar cambios -->
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--clr-border)">
+      <button id="btn-guardar-perfil" class="btn-primary" style="width:100%;margin-bottom:0.75rem">
+        💾 Guardar cambios
+      </button>
       <button id="btn-abrir-eliminar-cuenta" class="btn-danger" style="width:100%">
         🗑 Eliminar mi cuenta
       </button>
     </div>`;
-  // Muestra el perfil
-  toggle(document.getElementById('modal-perfil'), true);
+
+  // Muestra overlay de cámara al pasar el ratón sobre el avatar
+  const avatarWrap = document.getElementById('perfil-avatar-wrap');
+  const overlay = document.getElementById('perfil-avatar-overlay');
+  avatarWrap.addEventListener('mouseenter', () => overlay.style.opacity = '1');
+  avatarWrap.addEventListener('mouseleave', () => overlay.style.opacity = '0');
+
+  // Cuando el usuario selecciona una imagen, se previsualiza inmediatamente en el avatar
+  document.getElementById('perfil-foto-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    // Comprueba que el fichero sea una imagen y no supere 2 MB
+    if (!file.type.startsWith('image/')) {
+      document.getElementById('perfil-err').textContent = 'Solo se admiten imágenes.';
+      document.getElementById('perfil-err').classList.remove('hidden');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      document.getElementById('perfil-err').textContent = 'La imagen no debe superar 2 MB.';
+      document.getElementById('perfil-err').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('perfil-err').classList.add('hidden');
+    // Convierte a data-URL y muestra como previsualización en el avatar
+    const dataUrl = await fileADataURL(file);
+    document.getElementById('perfil-avatar').innerHTML =
+      `<img src="${dataUrl}" alt="Foto de perfil"
+            style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    // Guarda en memoria para usarla al guardar
+    avatarWrap._pendingFotoURL = dataUrl;
+  });
+
+  // Listener del botón "Guardar cambios": actualiza nombre, fecha y foto en Firestore
+  document.getElementById('btn-guardar-perfil').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-guardar-perfil');
+    const msgOk = document.getElementById('perfil-msg');
+    const msgErr = document.getElementById('perfil-err');
+    msgOk.classList.add('hidden');
+    msgErr.classList.add('hidden');
+
+    const nuevoNombre = document.getElementById('perfil-nombre-input').value.trim();
+    const nuevaFnac = document.getElementById('perfil-fnac-input').value;
+    const nuevaFoto = document.getElementById('perfil-avatar-wrap')._pendingFotoURL || null;
+
+    // Validaciones básicas
+    if (!nuevoNombre || nuevoNombre.length < 3) {
+      msgErr.textContent = 'El nombre debe tener al menos 3 caracteres.';
+      msgErr.classList.remove('hidden');
+      return;
+    }
+    if (!nuevaFnac) {
+      msgErr.textContent = 'La fecha de nacimiento no puede estar vacía.';
+      msgErr.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    try {
+      // Construye el objeto de actualización sólo con los campos que cambian
+      const datosActualizar = { Nombre: nuevoNombre, F_Nacimiento: nuevaFnac };
+      if (nuevaFoto) datosActualizar.FotoURL = nuevaFoto;
+
+      await DB.Usuario.actualizar(usuario.US_DNI, datosActualizar);
+
+      // Actualiza la UI del navbar con el nuevo nombre e iniciales / foto
+      document.getElementById('nav-username').textContent = nuevoNombre;
+      const avatarNavEl = document.getElementById('avatar-initials');
+      if (nuevaFoto) {
+        avatarNavEl.innerHTML = `<img src="${nuevaFoto}" alt="Avatar"
+          style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      } else {
+        avatarNavEl.textContent = iniciales(nuevoNombre);
+      }
+
+      msgOk.textContent = '✓ Cambios guardados correctamente.';
+      msgOk.classList.remove('hidden');
+    } catch (err) {
+      msgErr.textContent = 'Error al guardar los cambios. Inténtalo de nuevo.';
+      msgErr.classList.remove('hidden');
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 Guardar cambios';
+    }
+  });
+
   // Listener del botón "Eliminar mi cuenta" (se re-registra cada vez que se abre el perfil)
   document.getElementById('btn-abrir-eliminar-cuenta').addEventListener('click', () => {
     toggle(document.getElementById('modal-perfil'), false);
     toggle(document.getElementById('modal-eliminar-cuenta'), true);
   });
+}
+
+/**
+ * Listener para abrir el perfil de usuario y carga los datos del usuario junto a sus suscripciones activas
+ */
+document.getElementById('btn-perfil').addEventListener('click', async () => {
+  // Obtiene el usuario actual autorizado
+  const usuario = await Auth.usuarioActual();
+  // Si no se encuentra no carga nada
+  if (!usuario) return;
+  // Obtención de suscripciones activas
+  const subs = await DB.Subscricion.listarPorUsuario(usuario.US_DNI);
+  const activas = subs.filter(s => s.Estado === 'activa');
+
+  // Renderiza el contenido del modal con los datos del usuario
+  renderizarPerfil(usuario, activas);
+
+  // Muestra el perfil
+  toggle(document.getElementById('modal-perfil'), true);
 });
 // Listener para cerrar el perfil al pulsar la X
 document.getElementById('close-modal-perfil').addEventListener('click', () => {
@@ -1931,7 +2098,16 @@ function mostrarFormClase(clase, deportesList, profesores, categorias) {
         <div class="field">
           <label>Deporte</label>
           <select id="clase-deporte">
-            ${deportesList.length === 0 ? '<option value="">— Crea un deporte primero —</option>' : deportesList.map(([key, cfg]) => `<option value="${key}" ${clase?.Deporte === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>`).join('')}
+            ${deportesList.length === 0
+              // Si no hay deportes creados, mostramos aviso
+              ? '<option value="">— Crea un deporte primero —</option>'
+              // Si hay deportes: en creación añadimos "Sin asignar" como primera opción por defecto;
+              // en edición mostramos directamente los deportes con el deporte actual pre-seleccionado
+              : (esNuevo ? '<option value="">— Sin asignar —</option>' : '') +
+                deportesList.map(([key, cfg]) =>
+                  `<option value="${key}" ${clase?.Deporte === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>`
+                ).join('')
+            }
           </select>
         </div>
         <div class="field"><label>Descripción</label><input id="clase-desc" type="text" placeholder="Ej: Técnica avanzada" value="${clase?.Descripcion || ''}" /></div>
@@ -2226,5 +2402,5 @@ window.App = {
       pageAuth.classList.remove('hidden');
       document.querySelectorAll('.page:not(#page-auth)').forEach(p => p.classList.add('hidden'));
     }
-  });
+  })
 })();
