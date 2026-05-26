@@ -1931,7 +1931,16 @@ function mostrarFormClase(clase, deportesList, profesores, categorias) {
         <div class="field">
           <label>Deporte</label>
           <select id="clase-deporte">
-            ${deportesList.length === 0 ? '<option value="">— Crea un deporte primero —</option>' : deportesList.map(([key, cfg]) => `<option value="${key}" ${clase?.Deporte === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>`).join('')}
+            ${deportesList.length === 0
+              // Si no hay deportes creados, mostramos aviso
+              ? '<option value="">— Crea un deporte primero —</option>'
+              // Si hay deportes: en creación añadimos "Sin asignar" como primera opción por defecto;
+              // en edición mostramos directamente los deportes con el deporte actual pre-seleccionado
+              : (esNuevo ? '<option value="">— Sin asignar —</option>' : '') +
+                deportesList.map(([key, cfg]) =>
+                  `<option value="${key}" ${clase?.Deporte === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>`
+                ).join('')
+            }
           </select>
         </div>
         <div class="field"><label>Descripción</label><input id="clase-desc" type="text" placeholder="Ej: Técnica avanzada" value="${clase?.Descripcion || ''}" /></div>
@@ -2226,5 +2235,5 @@ window.App = {
       pageAuth.classList.remove('hidden');
       document.querySelectorAll('.page:not(#page-auth)').forEach(p => p.classList.add('hidden'));
     }
-  });
+  })
 })();
