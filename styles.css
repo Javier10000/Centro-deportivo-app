@@ -140,9 +140,7 @@ code { font-family: monospace; background: var(--clr-surface2); padding: 0.125re
 .sidebar.sidebar--open {
   transform: translateX(0);
 }
-.sidebar.hidden-nav {
-  /* visible en DOM pero fuera de pantalla — transform lo controla */
-}
+
 
 .sidebar-header {
   display: flex; align-items: center; gap: 0.5rem;
