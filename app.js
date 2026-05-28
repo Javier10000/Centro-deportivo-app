@@ -1,10 +1,5 @@
 /**
-primero un git pull para descargar los cambios 
-Actualizar los cambios: 
-git add .
-git commit -m "Añadida la validación de usuarios en app.js y estilos nuevos"
-git push
->>>>>>> 1be1522260bb6342bf428f5fac91ee4efd7c45db
+ * Archivo de funciones para la web 
  */
 
 /* ============================================================
@@ -74,6 +69,50 @@ function mostrarToast(mensaje, tipo = 'success') {
   toast._timer = setTimeout(() => {
     toast.classList.remove('app-toast--visible');
   }, 3200);
+}
+
+/**
+ * Calcula la edad en años a partir de una fecha de nacimiento ISO.
+ * @param {string} fnacISO - Fecha de nacimiento en formato ISO.
+ * @returns {number} - Edad en años completos.
+ */
+function calcularEdad(fnacISO) {
+  const hoy = new Date();
+  const fnac = new Date(fnacISO);
+  let edad = hoy.getFullYear() - fnac.getFullYear();
+  const mDiff = hoy.getMonth() - fnac.getMonth();
+  if (mDiff < 0 || (mDiff === 0 && hoy.getDate() < fnac.getDate())) edad--;
+  return edad;
+}
+
+/**
+ * Clona un elemento del DOM para eliminar todos sus listeners previos y lo reinserta en su lugar.
+ * @param {string} id - ID del elemento a clonar.
+ * @returns {HTMLElement} - El nuevo nodo ya insertado en el DOM.
+ */
+function clonarElemento(id) {
+  const el = document.getElementById(id);
+  const nuevo = el.cloneNode(true);
+  el.parentNode.replaceChild(nuevo, el);
+  return nuevo;
+}
+
+/**
+ * Abre el modal compartido de confirmación de eliminación del panel admin.
+ * @param {string} htmlMensaje - Mensaje HTML a mostrar en el modal.
+ * @param {Function} onConfirm - Función async a ejecutar al confirmar.
+ */
+function abrirModalAdminEliminar(htmlMensaje, onConfirm) {
+  const modal = document.getElementById('modal-admin-eliminar');
+  document.getElementById('admin-eliminar-msg').innerHTML = htmlMensaje;
+  toggle(modal, true);
+  //Reset de boton de confirmación para evitar listeners duplicados
+  const nuevoBtn = clonarElemento('btn-admin-confirm-eliminar');
+  nuevoBtn.addEventListener('click', async () => {
+    nuevoBtn.disabled = true; nuevoBtn.textContent = 'Eliminando…';
+    await onConfirm();
+    toggle(modal, false);
+  });
 }
 
 /* ============================================================
@@ -434,12 +473,10 @@ async function renderPaginaReservas() {
   document.getElementById('reserva-fecha').value = hoy;
 
   //Selector de titular (yo / tercero)
-  const selectTitular = document.getElementById('reserva-titular');
   const panelTercero = document.getElementById('panel-tercero');
 
   // Clonar para limpiar listeners previos
-  const nuevoSelectTitular = selectTitular.cloneNode(true);
-  selectTitular.parentNode.replaceChild(nuevoSelectTitular, selectTitular);
+  const nuevoSelectTitular = clonarElemento('reserva-titular');
   // Panel siempre oculto al entrar en la página
   toggle(panelTercero, false);
   nuevoSelectTitular.value = 'yo';
@@ -464,8 +501,7 @@ async function renderPaginaReservas() {
   });
   // Listener: al cambiar deporte, cargar sus clases.
   // Clonamos el nodo para eliminar listeners previos y evitar duplicados
-  const nuevoSelect = selectDeporte.cloneNode(true);
-  selectDeporte.parentNode.replaceChild(nuevoSelect, selectDeporte);
+  const nuevoSelect = clonarElemento('reserva-deporte');
 // Si el deporte cambia carga las clases del mismo
   nuevoSelect.addEventListener('change', async () => {
     const deporte = nuevoSelect.value;
@@ -492,17 +528,7 @@ async function renderPaginaReservas() {
     const edadTerceroInput = Number(document.getElementById('tercero-edad').value);
     const usarEdadTercero = esTercero && edadTerceroInput >= 1 && edadTerceroInput <= 120;
 
-    let edadReferencia;
-    if (usarEdadTercero) {
-      edadReferencia = edadTerceroInput;
-    } else {
-      const fnac = new Date(usuario.F_Nacimiento);
-      const hoyDate = new Date();
-      let edadUsuario = hoyDate.getFullYear() - fnac.getFullYear();
-      const mesD = hoyDate.getMonth() - fnac.getMonth();
-      if (mesD < 0 || (mesD === 0 && hoyDate.getDate() < fnac.getDate())) edadUsuario--;
-      edadReferencia = edadUsuario;
-    }
+    const edadReferencia = usarEdadTercero ? edadTerceroInput : calcularEdad(usuario.F_Nacimiento);
 
     //Buscar categorías: primero específicas del deporte, si no hay usar globales
     const todasCats = await DB.Categoria.listarTodas();
@@ -555,10 +581,7 @@ async function renderPaginaReservas() {
     }
   });
   // Botón reservar — clonar para evitar listeners duplicados
-  const btnReserva = document.getElementById('btn-hacer-reserva');
-  const nuevoBtn = btnReserva.cloneNode(true);
-  btnReserva.parentNode.replaceChild(nuevoBtn, btnReserva);
-  nuevoBtn.addEventListener('click', hacerReserva);
+  clonarElemento('btn-hacer-reserva').addEventListener('click', hacerReserva);
   // Renderiza el historial de reservas
   await renderHistorialReservas();
 }
@@ -696,6 +719,90 @@ let _cancelarSubId = null;
    ============================================================ */
 //Creación de array con los dias de la semana
 const DIAS_SEMANA = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+
+/**
+ * Construye el mapa dia->hora->clases a partir de una lista de clases y profesores.
+ * @param {Array} clases - Lista de clases a procesar.
+ * @param {Array} profesores - Lista de profesores para resolver nombres (solo admin).
+ * @param {boolean} buscarProf - Si true usa DB.Profesor.buscarPorDNI; si false busca en el array local.
+ * @returns {Promise<{mapa: object, horas: string[]}>}
+ */
+async function construirMapaHorario(clases, profesores = [], buscarProf = false) {
+  // Recopilar todas las horas únicas ordenadas
+  const horasSet = new Set();
+  clases.forEach(c => {
+    const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
+    if (match) horasSet.add(match[0]);
+  });
+  const horas = [...horasSet].sort();
+
+  // Construir mapa dia->hora->clases
+  const mapa = {};
+  DIAS_SEMANA.forEach(d => { mapa[d] = {}; horas.forEach(h => { mapa[d][h] = []; }); });
+  //Rellenamos el horario
+  for (const c of clases) {
+    const cfg = DEPORTES_CONFIG[c.Deporte] || {};
+    const prof = buscarProf
+      ? (c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null)
+      : profesores.find(p => p.PRO_DNI === c.PRO_DNI);
+    const horarioUpper = c.Horario.toUpperCase();
+    DIAS_SEMANA.forEach(dia => {
+      const diaAbrev = dia.substring(0, 3).toUpperCase();
+      const diaAlt = dia === 'Miercoles' ? 'MIE' : diaAbrev;
+      if (horarioUpper.includes(diaAbrev) || horarioUpper.includes(diaAlt) || horarioUpper.includes(dia.toUpperCase())) {
+        const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
+        const hora = match ? match[0] : null;
+        if (hora && mapa[dia][hora] !== undefined) {
+          mapa[dia][hora].push({ ...c, cfg, profNombre: prof ? prof.Nombre : null });
+        }
+      }
+    });
+  }
+  return { mapa, horas };
+}
+
+/**
+ * Genera el HTML de la tabla de horario semanal.
+ * @param {object} mapa - Mapa dia->hora->clases generado por construirMapaHorario.
+ * @param {string[]} horas - Lista de horas ordenadas.
+ * @param {boolean} conBotonEditar - Si true incluye el botón de editar en cada pill (panel admin).
+ * @param {string} msgVacio - Mensaje cuando no hay clases.
+ * @returns {string} - HTML de la tabla lista para insertar en el DOM.
+ */
+function generarTablaHorarioHTML(mapa, horas, conBotonEditar = false, msgVacio = 'No hay clases para mostrar.') {
+  if (horas.length === 0) return `<div class="empty-state">${msgVacio}</div>`;
+  return `
+    <div class="horario-scroll">
+      <table class="horario-table">
+        <thead>
+          <tr>
+            <th class="hora-col">Hora</th>
+            ${DIAS_SEMANA.map(d => `<th>${d}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${horas.map(hora => `
+            <tr>
+              <td class="hora-cell">${hora}</td>
+              ${DIAS_SEMANA.map(dia => {
+    const items = mapa[dia][hora];
+    if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
+    return `<td class="celda-clase">
+                ${items.map(it => `
+                  <div class="horario-pill" style="background:${it.cfg.color || '#888'}22;border-left:3px solid ${it.cfg.color || '#888'}">
+                    <span class="pill-deporte" style="color:${it.cfg.color || '#888'}">${it.cfg.icon || ''} ${it.cfg.label || it.Deporte}</span>
+                    <span class="pill-desc">${it.Descripcion}</span>
+                    ${it.Pista ? `<span class="pill-pista">📍 ${it.Pista}</span>` : ''}
+                    ${it.profNombre ? `<span class="pill-prof">👤 ${it.profNombre}</span>` : ''}
+                    ${conBotonEditar ? `<button class="pill-edit-btn btn-ghost btn-sm" data-id="${it.id}">✏️ Editar</button>` : ''}
+                  </div>`).join('')}
+              </td>`;
+  }).join('')}
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
 /**
  * Renderizado completo de los horarios
  */
@@ -731,71 +838,13 @@ async function renderHorarios() {
     const clases = filtroDeporte
       ? todasClases.filter(c => c.Deporte === filtroDeporte)
       : todasClases;
-
-    // Recopilar todas las horas únicas ordenadas
-    const horasSet = new Set();
-    clases.forEach(c => {
-      const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
-      if (match) horasSet.add(match[0]);
-    });
-    const horas = [...horasSet].sort();
 //Si no hay clases se muestra el array y ordenamos las horas
     if (clases.length === 0) {
       tablaEl.innerHTML = '<div class="empty-state">No hay clases para mostrar.</div>';
       return;
     }
-
-    // Construir mapa dia->hora->clases
-    const mapa = {};
-    DIAS_SEMANA.forEach(d => { mapa[d] = {}; horas.forEach(h => { mapa[d][h] = []; }); });
-//Rellenamos el horario
-    for (const c of clases) {
-      const cfg = DEPORTES_CONFIG[c.Deporte] || {};
-      const prof = c.PRO_DNI ? await DB.Profesor.buscarPorDNI(c.PRO_DNI) : null;
-      const horarioUpper = c.Horario.toUpperCase();
-      DIAS_SEMANA.forEach(dia => {
-        const diaAbrev = dia.substring(0, 3).toUpperCase();
-        const diaAlt = dia === 'Miercoles' ? 'MIE' : diaAbrev;
-        if (horarioUpper.includes(diaAbrev) || horarioUpper.includes(diaAlt) || horarioUpper.includes(dia.toUpperCase())) {
-          const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
-          const hora = match ? match[0] : null;
-          if (hora && mapa[dia][hora] !== undefined) {
-            mapa[dia][hora].push({ ...c, cfg, profNombre: prof ? prof.Nombre : null });
-          }
-        }
-      });
-    }
-
-    tablaEl.innerHTML = `
-      <div class="horario-scroll">
-        <table class="horario-table">
-          <thead>
-            <tr>
-              <th class="hora-col">Hora</th>
-              ${DIAS_SEMANA.map(d => `<th>${d}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${horas.map(hora => `
-              <tr>
-                <td class="hora-cell">${hora}</td>
-                ${DIAS_SEMANA.map(dia => {
-      const items = mapa[dia][hora];
-      if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
-      return `<td class="celda-clase">
-                    ${items.map(it => `
-                      <div class="horario-pill" style="background:${it.cfg.color || '#888'}22;border-left:3px solid ${it.cfg.color || '#888'}">
-                        <span class="pill-deporte" style="color:${it.cfg.color || '#888'}">${it.cfg.icon || ''} ${it.cfg.label || it.Deporte}</span>
-                        <span class="pill-desc">${it.Descripcion}</span>
-                        ${it.Pista ? `<span class="pill-pista">📍 ${it.Pista}</span>` : ''}
-                        ${it.profNombre ? `<span class="pill-prof">👤 ${it.profNombre}</span>` : ''}
-                      </div>`).join('')}
-                  </td>`;
-    }).join('')}
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    const { mapa, horas } = await construirMapaHorario(clases, [], true);
+    tablaEl.innerHTML = generarTablaHorarioHTML(mapa, horas);
   };
 //Inicialización sin filtros
   await renderTabla('');
@@ -892,11 +941,7 @@ async function renderPlanesContratacion() {
   );
 
   // Calcular edad del usuario una sola vez
-  const hoy = new Date();
-  const fnac = new Date(usuario.F_Nacimiento);
-  let edadUsuario = hoy.getFullYear() - fnac.getFullYear();
-  const mDiff = hoy.getMonth() - fnac.getMonth();
-  if (mDiff < 0 || (mDiff === 0 && hoy.getDate() < fnac.getDate())) edadUsuario--;
+  const edadUsuario = calcularEdad(usuario.F_Nacimiento);
 
   // Cargar categorías de todos los deportes en paralelo
   const categoriasPorDeporte = await Promise.all(
@@ -1070,16 +1115,13 @@ document.getElementById('btn-confirm-cancelar').addEventListener('click', async 
     document.getElementById('stat-subs').textContent = subs.filter(s => s.Estado === 'activa').length;
   }
 });
-// Listener para cerrar el modal cuando el usuario pulsa cancelar
-document.getElementById('btn-cancel-modal').addEventListener('click', () => {
-  toggle(document.getElementById('modal-cancelar'), false);
-  // Reset de variable
-  _cancelarSubId = null;
-});
-// Listener para cerrar modal cuando el usuario pulsa la "X"
-document.getElementById('close-modal-cancelar').addEventListener('click', () => {
-  toggle(document.getElementById('modal-cancelar'), false);
-  _cancelarSubId = null;
+// Listener para cerrar el modal cuando el usuario pulsa cancelar o la "X"
+['btn-cancel-modal', 'close-modal-cancelar'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    toggle(document.getElementById('modal-cancelar'), false);
+    // Reset de variable
+    _cancelarSubId = null;
+  });
 });
 
 /* ============================================================
@@ -1347,12 +1389,10 @@ document.getElementById('btn-logout').addEventListener('click', () => {
    ELIMINAR CUENTA
    ============================================================ */
 // Listener para cerrar la sesion del usuario y recargar la página borrando la sesión anterior
-document.getElementById('close-modal-eliminar-cuenta').addEventListener('click', () => {
-  toggle(document.getElementById('modal-eliminar-cuenta'), false);
-});
-//Boton de eliminar cuenta
-document.getElementById('btn-cancel-eliminar-cuenta').addEventListener('click', () => {
-  toggle(document.getElementById('modal-eliminar-cuenta'), false);
+['close-modal-eliminar-cuenta', 'btn-cancel-eliminar-cuenta'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    toggle(document.getElementById('modal-eliminar-cuenta'), false);
+  });
 });
 //Boton eliminar cuenta
 document.getElementById('modal-eliminar-cuenta').addEventListener('click', (e) => {
@@ -1580,28 +1620,19 @@ function mostrarFormDeporte(dep) {
  */
 function confirmarEliminarDeporte(id, nombre) {
   // Preparar el modal y mensaje de advertencia
-  const modal = document.getElementById('modal-admin-eliminar');
-  document.getElementById('admin-eliminar-msg').innerHTML =
+  abrirModalAdminEliminar(
     `⚠️ ¿Eliminar el deporte <strong>${nombre}</strong>?<br>
-     <span style="font-size:13px;color:var(--clr-muted)">Se eliminarán en cascada todas sus categorías, clases, reservas de esas clases y suscripciones activas.</span>`;
-// Mostrar el modal
-  toggle(modal, true);
- // Resetear el botón de confirmación (evita listeners duplicados)
-  const btnConfirm = document.getElementById('btn-admin-confirm-eliminar');
-  const nuevoBtn = btnConfirm.cloneNode(true);
-  btnConfirm.parentNode.replaceChild(nuevoBtn, btnConfirm);
-// Acción al confirmar la eliminación
-  nuevoBtn.addEventListener('click', async () => {
-    nuevoBtn.disabled = true; nuevoBtn.textContent = 'Eliminando…';
-    // Eliminar el deporte y todos sus datos asociados
-    await DB.Deporte.eliminar(id);
-    // Recargar configuración y cerrar modal
-    await cargarDeportesConfig();
-    toggle(modal, false);
-    // Notificación de éxito y refrescar la lista
-    mostrarToast(`Deporte "${nombre}" eliminado con todos sus datos.`, 'success');
-    await renderAdminDeportes();
-  });
+     <span style="font-size:13px;color:var(--clr-muted)">Se eliminarán en cascada todas sus categorías, clases, reservas de esas clases y suscripciones activas.</span>`,
+    async () => {
+      // Eliminar el deporte y todos sus datos asociados
+      await DB.Deporte.eliminar(id);
+      // Recargar configuración y cerrar modal
+      await cargarDeportesConfig();
+      // Notificación de éxito y refrescar la lista
+      mostrarToast(`Deporte "${nombre}" eliminado con todos sus datos.`, 'success');
+      await renderAdminDeportes();
+    }
+  );
 }
 
 /* --- ADMIN: CATEGORÍAS --- */
@@ -1661,23 +1692,17 @@ async function renderAdminCategorias() {
  // Botones de eliminación
   content.querySelectorAll('.btn-del-cat').forEach(btn => {
     btn.addEventListener('click', () => {
-      const modal = document.getElementById('modal-admin-eliminar');
       // Mensaje del modal
-      document.getElementById('admin-eliminar-msg').innerHTML =
-        `¿Eliminar la categoría <strong>${btn.dataset.nombre}</strong>?`;
-      toggle(modal, true);
-       // Resetear botón de confirmación (evita listeners duplicados)
-      const btnC = document.getElementById('btn-admin-confirm-eliminar');
-      const nuevoBtn = btnC.cloneNode(true);
-      btnC.parentNode.replaceChild(nuevoBtn, btnC);
-      // Acción al confirmar la eliminación
-      nuevoBtn.addEventListener('click', async () => {
-        await DB.Categoria.eliminar(btn.dataset.id);
-        toggle(modal, false);
-        mostrarToast('Categoría eliminada.', 'success');
-        await renderAdminCategorias();
-        await renderSidebarCategorias();
-      });
+      abrirModalAdminEliminar(
+        `¿Eliminar la categoría <strong>${btn.dataset.nombre}</strong>?`,
+        async () => {
+          // Acción al confirmar la eliminación
+          await DB.Categoria.eliminar(btn.dataset.id);
+          mostrarToast('Categoría eliminada.', 'success');
+          await renderAdminCategorias();
+          await renderSidebarCategorias();
+        }
+      );
     });
   });
 }
@@ -1908,21 +1933,16 @@ async function renderAdminProfesores() {
 //Reset de boton de confirmación
   content.querySelectorAll('.btn-del-prof').forEach(btn => {
     btn.addEventListener('click', () => {
-      const modal = document.getElementById('modal-admin-eliminar');
-      document.getElementById('admin-eliminar-msg').innerHTML =
-        `¿Eliminar al profesor <strong>${btn.dataset.nombre}</strong>?<br>
-         <span style="font-size:13px;color:var(--clr-muted)">Sus clases quedarán sin profesor asignado.</span>`;
-      toggle(modal, true);
-      const btnC = document.getElementById('btn-admin-confirm-eliminar');
-      const nuevoBtn = btnC.cloneNode(true);
-      btnC.parentNode.replaceChild(nuevoBtn, btnC);
       // Acción al confirmar
-      nuevoBtn.addEventListener('click', async () => {
-        await DB.Profesor.eliminar(btn.dataset.dni);
-        toggle(modal, false);
-        mostrarToast(`Profesor "${btn.dataset.nombre}" eliminado.`, 'success');
-        await renderAdminProfesores();
-      });
+      abrirModalAdminEliminar(
+        `¿Eliminar al profesor <strong>${btn.dataset.nombre}</strong>?<br>
+         <span style="font-size:13px;color:var(--clr-muted)">Sus clases quedarán sin profesor asignado.</span>`,
+        async () => {
+          await DB.Profesor.eliminar(btn.dataset.dni);
+          mostrarToast(`Profesor "${btn.dataset.nombre}" eliminado.`, 'success');
+          await renderAdminProfesores();
+        }
+      );
     });
   });
 }
@@ -2055,20 +2075,15 @@ async function renderAdminClases() {
 // Eliminar clase
   content.querySelectorAll('.btn-del-clase').forEach(btn => {
     btn.addEventListener('click', () => {
-      const modal = document.getElementById('modal-admin-eliminar');
-      document.getElementById('admin-eliminar-msg').innerHTML =
+      abrirModalAdminEliminar(
         `¿Eliminar la clase <strong>${btn.dataset.desc}</strong>?<br>
-         <span style="font-size:13px;color:var(--clr-muted)">Se eliminarán todas las reservas asociadas a esta clase.</span>`;
-      toggle(modal, true);
-      const btnC = document.getElementById('btn-admin-confirm-eliminar');
-      const nuevoBtn = btnC.cloneNode(true);
-      btnC.parentNode.replaceChild(nuevoBtn, btnC);
-      nuevoBtn.addEventListener('click', async () => {
-        await DB.Clases.eliminar(btn.dataset.id);
-        toggle(modal, false);
-        mostrarToast('Clase y sus reservas eliminadas.', 'success');
-        await renderAdminClases();
-      });
+         <span style="font-size:13px;color:var(--clr-muted)">Se eliminarán todas las reservas asociadas a esta clase.</span>`,
+        async () => {
+          await DB.Clases.eliminar(btn.dataset.id);
+          mostrarToast('Clase y sus reservas eliminadas.', 'success');
+          await renderAdminClases();
+        }
+      );
     });
   });
 }
@@ -2208,66 +2223,36 @@ async function renderAdminHorarios() {
     const clases = filtroDeporte
       ? todasClases.filter(c => c.Deporte === filtroDeporte)
       : todasClases;
-// Extraer horas únicas
-    const horasSet = new Set();
-    clases.forEach(c => {
-      const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
-      if (match) horasSet.add(match[0]);
-    });
-    const horas = [...horasSet].sort();
-//Crear la estructura de dia/hora/clases
-    const mapa = {};
-    DIAS_SEMANA.forEach(d => { mapa[d] = {}; horas.forEach(h => { mapa[d][h] = []; }); });
- // Rellenar el mapa con las clases
-    for (const c of clases) {
-      const cfg = DEPORTES_CONFIG[c.Deporte] || {};
-      const prof = profesores.find(p => p.PRO_DNI === c.PRO_DNI);
-      const horarioUpper = c.Horario.toUpperCase();
-      DIAS_SEMANA.forEach(dia => {
-        const diaAbrev = dia.substring(0, 3).toUpperCase();
-        if (horarioUpper.includes(diaAbrev) || horarioUpper.includes(dia.toUpperCase())) {
-          const match = c.Horario.match(/(\d{1,2}:\d{2})/g);
-          const hora = match ? match[0] : null;
-          if (hora && mapa[dia][hora] !== undefined) {
-            mapa[dia][hora].push({ ...c, cfg, profNombre: prof ? prof.Nombre : null });
+    const { mapa, horas } = await construirMapaHorario(clases, profesores);
+// Generar HTML de la tabla
+    return generarTablaHorarioHTML(
+      mapa, horas, true,
+      'No hay clases. Créalas en la pestaña Clases.'
+    );
+  };
+
+  // Asignar listeners a los botones de editar pill (reutilizable para filtro y vista inicial)
+  const asignarListenersPillEdit = (contenedor, enHorarios = false) => {
+    contenedor.querySelectorAll('.pill-edit-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const snap = await firebase.firestore().collection('Clases').doc(btn.dataset.id).get();
+        if (snap.exists) {
+          const cats = await DB.Categoria.listarTodas();
+          adminState.tabActual = 'clases';
+          if (enHorarios) {
+            renderAdminTabs();
+            const formContent = document.getElementById('admin-content');
+            formContent.innerHTML = '<div id="form-clase" class="admin-form"></div><div id="admin-horarios-back" style="margin-top:1rem"><button class="btn-ghost" id="btn-volver-horarios">← Volver a Horarios</button></div>';
+            mostrarFormClase({ id: snap.id, ...snap.data() }, deportesList, profesores, cats);
+            document.getElementById('btn-volver-horarios').addEventListener('click', () => switchAdminTab('horarios'));
+          } else {
+            mostrarFormClase({ id: snap.id, ...snap.data() }, deportesList, profesores, cats);
           }
         }
       });
-    }
-// Generar HTML de la tabla
-    return `
-      <div class="horario-scroll">
-        <table class="horario-table">
-          <thead>
-            <tr>
-              <th class="hora-col">Hora</th>
-              ${DIAS_SEMANA.map(d => `<th>${d}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${horas.length === 0 ? `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--clr-muted)">No hay clases. Créalas en la pestaña Clases.</td></tr>` :
-        horas.map(hora => `
-              <tr>
-                <td class="hora-cell">${hora}</td>
-                ${DIAS_SEMANA.map(dia => {
-          const items = mapa[dia][hora];
-          if (!items || items.length === 0) return '<td class="celda-vacia"></td>';
-          return `<td class="celda-clase">
-                    ${items.map(it => `
-                      <div class="horario-pill" style="background:${it.cfg.color || '#888'}22;border-left:3px solid ${it.cfg.color || '#888'}">
-                        <span class="pill-deporte" style="color:${it.cfg.color || '#888'}">${it.cfg.icon || ''} ${it.cfg.label || it.Deporte}</span>
-                        <span class="pill-desc">${it.Descripcion}</span>
-                        ${it.Pista ? `<span class="pill-pista">📍 ${it.Pista}</span>` : ''}
-                        ${it.profNombre ? `<span class="pill-prof">👤 ${it.profNombre}</span>` : ''}
-                        <button class="pill-edit-btn btn-ghost btn-sm" data-id="${it.id}">✏️ Editar</button>
-                      </div>`).join('')}
-                  </td>`;
-        }).join('')}
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    });
   };
+
 // Renderizar vista inicial (sin filtros)
   const vistaHTML = await renderVista('');
 // Construcción del HTML principal
@@ -2288,44 +2273,21 @@ async function renderAdminHorarios() {
     document.getElementById('admin-horario-vista').innerHTML = '<div class="admin-loading">Cargando…</div>';
     document.getElementById('admin-horario-vista').innerHTML = await renderVista(e.target.value);
     // Reasignar listeners de editar
-    document.querySelectorAll('.pill-edit-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const snap = await firebase.firestore().collection('Clases').doc(btn.dataset.id).get();
-        if (snap.exists) {
-          const cats = await DB.Categoria.listarTodas();
-          mostrarFormClase({ id: snap.id, ...snap.data() }, deportesList, profesores, cats);
-          adminState.tabActual = 'clases';
-        }
-      });
-    });
+    asignarListenersPillEdit(document.getElementById('admin-horario-vista'));
   });
 
   // Botones editar en la vista inicial
-  content.querySelectorAll('.pill-edit-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const snap = await firebase.firestore().collection('Clases').doc(btn.dataset.id).get();
-      if (snap.exists) {
-        const cats = await DB.Categoria.listarTodas();
-        adminState.tabActual = 'clases';
-        renderAdminTabs();
-        const formContent = document.getElementById('admin-content');
-        formContent.innerHTML = '<div id="form-clase" class="admin-form"></div><div id="admin-horarios-back" style="margin-top:1rem"><button class="btn-ghost" id="btn-volver-horarios">← Volver a Horarios</button></div>';
-        mostrarFormClase({ id: snap.id, ...snap.data() }, deportesList, profesores, cats);
-        document.getElementById('btn-volver-horarios').addEventListener('click', () => switchAdminTab('horarios'));
-      }
-    });
-  });
+  asignarListenersPillEdit(content, true);
 }
 
 /* ============================================================
    MODAL ADMIN ELIMINAR (compartido)
    ============================================================ */
 
-document.getElementById('btn-admin-cancel-eliminar').addEventListener('click', () => {
-  toggle(document.getElementById('modal-admin-eliminar'), false);
-});
-document.getElementById('close-modal-admin-eliminar').addEventListener('click', () => {
-  toggle(document.getElementById('modal-admin-eliminar'), false);
+['btn-admin-cancel-eliminar', 'close-modal-admin-eliminar'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    toggle(document.getElementById('modal-admin-eliminar'), false);
+  });
 });
 document.getElementById('modal-admin-eliminar').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) toggle(e.currentTarget, false);
@@ -2354,13 +2316,7 @@ window.App = {
 
     // Mostrar/ocultar enlace admin según rol
     const navAdmin = document.getElementById('nav-admin-link');
-    if (navAdmin) {
-      if (usuario.Rol === 'admin') {
-        navAdmin.classList.remove('hidden');
-      } else {
-        navAdmin.classList.add('hidden');
-      }
-    }
+    if (navAdmin) toggle(navAdmin, usuario.Rol === 'admin');
 
     await cargarDeportesConfig();
     await renderSidebarCategorias();
